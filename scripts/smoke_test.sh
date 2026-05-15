@@ -141,7 +141,7 @@ assert "get repo metadata" "api '${GITEA_HOST}/api/v1/repos/${ME}/${REPO}' | jq 
 assert "list branches"     "api '${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/branches' | jq -e 'length > 0'"
 
 assert "create branch (old_ref_name)" "api -X POST -H 'Content-Type: application/json' \
-  -d '{\"new_branch_name\":\"feat/x\",\"old_ref_name\":\"main\"}' \
+  -d '{\"new_branch_name\":\"featx\",\"old_ref_name\":\"main\"}' \
   '${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/branches' | jq -e .name"
 
 assert "git/trees uses per_page" "api '${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/git/trees/main?per_page=1' \
@@ -204,12 +204,12 @@ json_extract "create milestone" \
 
 echo
 echo "== gitea-pull =="
-# Update file on feat/x to create a divergent commit, then open PR.
+# Update file on featx to create a divergent commit, then open PR.
 # Some Gitea versions take a beat after branch creation before contents API
 # returns the file on the new branch — short retry loop.
 SHA=""
 for i in 1 2 3 4 5; do
-  SHA=$(api "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt?ref=feat/x" 2>/dev/null \
+  SHA=$(api "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt?ref=featx" 2>/dev/null \
     | jq -r '.sha // empty')
   [ -n "$SHA" ] && break
   sleep 1
@@ -217,12 +217,12 @@ done
 if [ -n "$SHA" ]; then
   NEW=$(printf "hello v2\n" | base64)
   api -X PUT -H "Content-Type: application/json" \
-    -d "$(jq -n --arg c "$NEW" --arg s "$SHA" '{branch:"feat/x",message:"update",content:$c,sha:$s}')" \
+    -d "$(jq -n --arg c "$NEW" --arg s "$SHA" '{branch:"featx",message:"update",content:$c,sha:$s}')" \
     "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt" >/dev/null 2>&1
 
   PR_RESP=$(json_extract "create PR" \
     -X POST -H "Content-Type: application/json" \
-    -d '{"title":"smoke PR","body":"smoke","head":"feat/x","base":"main"}' \
+    -d '{"title":"smoke PR","body":"smoke","head":"featx","base":"main"}' \
     "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/pulls") || PR_RESP=""
 
   PR_NUM=$(echo "$PR_RESP" | jq -r '.number // empty')
@@ -238,7 +238,7 @@ if [ -n "$SHA" ]; then
     SKIP=$((SKIP+4))
   fi
 else
-  yellow "  SKIP  PR section (could not get hello.txt sha on feat/x)"
+  yellow "  SKIP  PR section (could not get hello.txt sha on featx)"
   SKIP=$((SKIP+5))
 fi
 
