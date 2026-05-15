@@ -204,25 +204,19 @@ json_extract "create milestone" \
 
 echo
 echo "== gitea-pull =="
-# Update file on featx to create a divergent commit, then open PR.
-# Some Gitea versions take a beat after branch creation before contents API
-# returns the file on the new branch — short retry loop.
-SHA=""
-for i in 1 2 3 4 5; do
-  SHA=$(api "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt?ref=featx" 2>/dev/null \
-    | jq -r '.sha // empty')
-  [ -n "$SHA" ] && break
-  sleep 1
-done
-if [ -n "$SHA" ]; then
-  NEW=$(printf "hello v2\n" | base64)
-  api -X PUT -H "Content-Type: application/json" \
-    -d "$(jq -n --arg c "$NEW" --arg s "$SHA" '{branch:"featx",message:"update",content:$c,sha:$s}')" \
-    "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt" >/dev/null 2>&1
-
+# Open a PR by creating a divergent commit on featx via the create-file
+# endpoint (uses new_branch parameter so we don't depend on a prior create-branch
+# call having materialized).
+NEW=$(printf "hello v2\n" | base64)
+DIVERGE_RESP=$(json_extract "create commit on featx-pr" \
+  -X POST -H "Content-Type: application/json" \
+  -d "$(jq -n --arg c "$NEW" '{branch:"main",new_branch:"featx-pr",message:"diverge for PR",content:$c}')" \
+  "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/extra.txt")
+if [ -n "$DIVERGE_RESP" ]; then
+  PASS=$((PASS+1)); green "  PASS  create commit on featx-pr"
   PR_RESP=$(json_extract "create PR" \
     -X POST -H "Content-Type: application/json" \
-    -d '{"title":"smoke PR","body":"smoke","head":"featx","base":"main"}' \
+    -d '{"title":"smoke PR","body":"smoke","head":"featx-pr","base":"main"}' \
     "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/pulls") || PR_RESP=""
 
   PR_NUM=$(echo "$PR_RESP" | jq -r '.number // empty')
@@ -238,7 +232,7 @@ if [ -n "$SHA" ]; then
     SKIP=$((SKIP+4))
   fi
 else
-  yellow "  SKIP  PR section (could not get hello.txt sha on featx)"
+  yellow "  SKIP  PR section (could not create divergent commit)"
   SKIP=$((SKIP+5))
 fi
 
