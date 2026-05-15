@@ -18,90 +18,33 @@ description: "Gitea REST API 共享基础（面向自部署 Gitea 实例）：ho
 
 ## 配置
 
-通过两个环境变量与 Gitea 通信：
+通过 `~/.config/gitea-skills/config` 文件存储 Gitea host 和 token。**用户只需运行一次 `setup.sh`**，之后 skill 自动读取，无需手动 export。
 
-| 变量 | 含义 | 默认 |
-|------|------|------|
-| `GITEA_HOST` | Gitea 实例地址，**不要带 `/api/v1` 后缀**；带 path 前缀时直接写到前缀末尾 | 无（自部署没有合理默认值，必填） |
-| `GITEA_ACCESS_TOKEN` | 个人访问令牌（PAT） | 无（必填） |
-
-**首次使用**：
-
-1. 让用户登录他的自部署 Gitea Web 界面 → `Settings → Applications → Manage Access Tokens → Generate New Token`
-2. 勾选所需 scope。Gitea 1.20+ 走细粒度 scope（`read:repository` / `write:repository` / `read:issue` / `write:issue` / `read:user` / `read:organization` / `write:organization` / `read:package` / `write:package` 等）；Gitea 1.19 及以下是粗粒度 scope（`repo`、`admin:org` 等），**两套写法不通用**，按用户实例版本来
-3. 复制 token（**只显示一次**），把 host + token 注入到 agent 进程
-
-### 注入 env：用 direnv（推荐）
-
-[direnv](https://direnv.net) 让 env 按目录自动 load/unload，每个 Gitea 实例一份独立配置，不会污染全局 shell。
-
-第一次设置：
+### 首次配置
 
 ```bash
-# macOS
-brew install direnv
-# Linux: 见 https://direnv.net/docs/installation.html
-
-# 在 shell rc 末尾加 hook（zsh 例，bash 同理）
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
-exec zsh
+bash setup.sh
 ```
 
-为某个工作目录配 Gitea：
+脚本会交互式询问：
+1. Gitea host（如 `https://gitea.quantpi.cn`）
+2. Personal Access Token（隐藏输入）
+
+然后自动验证连通性（`/version` + `/user`），通过后写入 `~/.config/gitea-skills/config`（chmod 600）。
+
+### 更新 token
+
+再次运行 `bash setup.sh`，覆盖旧配置。
+
+### 删除配置
 
 ```bash
-cd ~/code/my-project
-cat > .envrc <<'EOF'
-export GITEA_HOST="https://git.internal.company.com"
-# token 走外部文件，避免写进 .envrc 之后被 git 误提交
-export GITEA_ACCESS_TOKEN="$(cat ~/.config/gitea-skills/quantpi.token)"
-EOF
-direnv allow
+bash setup.sh --uninstall
 ```
 
-把 token 单独存成文件：
+### PAT scope 说明
 
-```bash
-mkdir -p ~/.config/gitea-skills
-chmod 700 ~/.config/gitea-skills
-printf 'gta_xxxxxxxxxxxxxxxxxxxxxxxxxxx' > ~/.config/gitea-skills/quantpi.token
-chmod 600 ~/.config/gitea-skills/quantpi.token
-```
-
-之后在这个目录里 `cd` 进去 direnv 自动 export，opencode/任意 agent 在这目录启动 bash tool 都能拿到。`cd` 出去自动 unset，token 不外泄。
-
-**多个 Gitea 实例怎么处理**：每个实例对应的工作目录放各自的 `.envrc`。例如 `~/code/work/.envrc` 指向 `quantpi.token`，`~/code/oss/.envrc` 指向 `gitea-com.token`。
-
-**`.gitignore` 必加 `.envrc`**，避免误提交。
-
-### 不用 direnv 的替代
-
-如果用户不想装 direnv，最简单的退路：在 `~/.zshrc` / `~/.bashrc` 里 export，每次开新 shell 就有了：
-
-```bash
-export GITEA_HOST="https://git.internal.company.com"
-export GITEA_ACCESS_TOKEN="$(cat ~/.config/gitea-skills/quantpi.token)"
-```
-
-缺点是只能 1 套 host，并且 token 进了所有 shell。
-
-**注意 opencode/agent 的 env 来源**：bash tool 子进程的环境变量**继承自启动 agent 的那个 shell**。所以无论 direnv 还是 rc 文件，关键是**先让 env 出现在你启动 agent 的 shell 里**，然后 agent 才能在 bash tool 里看到。
-
-### 探活验证（设置完先跑一遍）
-
-```bash
-# 1. 不带 token，确认 HOST/反代/证书都通
-curl -fsSL "${GITEA_HOST}/api/v1/version"
-
-# 2. 带 token，确认 token 有效
-curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
-  "${GITEA_HOST}/api/v1/user" | jq '{login, id}'
-```
-
-第一步失败：HOST 或反代有问题（见下方 "TLS/网络" 段）。
-第二步失败：token 无效或过期。
-
-**如果 agent 调用时报 `GITEA_HOST: parameter not set` / 401 而你确认本地 shell 已设**，原因九成是 agent 进程是从一个**没有这些 env 的 shell** 启动的（典型场景：从 GUI 应用直接启 opencode，没经过你的 rc）。重启 opencode 时确保从已 source 过 rc / direnv 已生效的终端启动。
+Gitea 1.20+ 走细粒度 scope（`read:repository` / `write:repository` / `read:issue` / `write:issue` / `read:user` / `read:organization` / `write:organization` / `read:package` / `write:package` 等）；Gitea 1.19 及以下是粗粒度 scope（`repo`、`admin:org` 等）。按用户实例版本在 Web 界面 `Settings → Applications → Generate New Token` 勾选。
 
 ## TLS / 网络（自部署常见问题）
 
@@ -156,6 +99,26 @@ export CURL_CA_BUNDLE="$HOME/.config/internal-ca.crt"
 ```
 
 ## curl 调用约定
+
+**重要**：每次执行 Gitea 相关 bash 命令时，先在同一个 bash 块里加载配置文件。这一行确保 `GITEA_HOST` 和 `GITEA_ACCESS_TOKEN` 可用（即使父 shell 没有 export）：
+
+```bash
+# ── 加载 gitea-skills 配置（每次 Gitea 操作前必须先执行）──
+_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
+[ -f "$_cfg" ] && . "$_cfg"
+```
+
+之后紧跟 curl 命令。完整示例：
+
+```bash
+_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
+[ -f "$_cfg" ] && . "$_cfg"
+
+curl -fsSL \
+  -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
+  -H "Accept: application/json" \
+  "${GITEA_HOST}/api/v1/<endpoint>"
+```
 
 所有 Gitea REST 调用都遵循这个模板：
 

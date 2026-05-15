@@ -79,60 +79,18 @@ After installation, restart the agent so it picks up the new skills.
 
 ## Configuration
 
-The skills talk to Gitea via two environment variables: `GITEA_HOST` and `GITEA_ACCESS_TOKEN`. **They must be present in the shell that launches your agent** (opencode, Claude Code, etc.) — the agent's bash tool inherits the env from there.
-
-### Recommended: direnv
-
-[direnv](https://direnv.net) loads/unloads env per directory. Keep a separate `.envrc` for each Gitea instance, never pollute your global shell.
+After cloning, run once:
 
 ```bash
-# 1) Install direnv (macOS)
-brew install direnv
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc   # or bash
-exec zsh
-
-# 2) Store the token in a permission-protected file
-mkdir -p ~/.config/gitea-skills
-chmod 700 ~/.config/gitea-skills
-printf 'gta_xxxxxxxxxxxxxxxxxxxxxxxxxxx' > ~/.config/gitea-skills/quantpi.token
-chmod 600 ~/.config/gitea-skills/quantpi.token
-
-# 3) Drop a .envrc per work directory (one per Gitea instance)
-cd ~/code/my-work
-cat > .envrc <<'EOF'
-export GITEA_HOST="https://git.internal.company.com"
-export GITEA_ACCESS_TOKEN="$(cat ~/.config/gitea-skills/quantpi.token)"
-EOF
-direnv allow
-echo '.envrc' >> .gitignore   # avoid accidental commit
-
-# 4) Launch the agent from that directory
-opencode    # bash tool inherits GITEA_HOST & GITEA_ACCESS_TOKEN automatically
+bash setup.sh
 ```
 
-Switching to another Gitea instance? `cd` to its work directory. Leave it and direnv unsets the env, no leakage.
+It interactively asks for your Gitea host and PAT, validates connectivity, and writes to `~/.config/gitea-skills/config` (chmod 600). Skills auto-load this file — **no manual export needed**.
 
-### Fallback: shell rc
+- Update token: `bash setup.sh` (run again to overwrite)
+- Remove config: `bash setup.sh --uninstall`
 
-If you only deal with one Gitea instance, just export in `~/.zshrc` / `~/.bashrc`:
-
-```bash
-export GITEA_HOST="https://git.internal.company.com"
-export GITEA_ACCESS_TOKEN="$(cat ~/.config/gitea-skills/quantpi.token)"
-```
-
-### Verify
-
-```bash
-# 1) Connectivity (no token required)
-curl -fsSL "${GITEA_HOST}/api/v1/version" | jq
-
-# 2) Token validity
-curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
-  "${GITEA_HOST}/api/v1/user" | jq '{login, id}'
-```
-
-Full configuration story (self-signed CA, reverse-proxy path prefix, `.netrc`, git trust setup) lives in [gitea-shared/SKILL.md](gitea-shared/SKILL.md).
+Full details (self-signed CA, reverse-proxy path prefix, scope selection) in [gitea-shared/SKILL.md](gitea-shared/SKILL.md).
 
 ## Usage examples
 

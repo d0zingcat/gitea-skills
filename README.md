@@ -78,60 +78,18 @@ rm -rf tmp
 
 ## 配置
 
-skill 通过两个环境变量与 Gitea 通信：`GITEA_HOST` + `GITEA_ACCESS_TOKEN`。**变量必须出现在启动 agent（opencode、Claude Code 等）的那个 shell** 里，agent 的 bash tool 子进程才能继承到。
-
-### 推荐姿势：direnv
-
-[direnv](https://direnv.net) 让 env 按目录自动加载/卸载，每个 Gitea 实例一份独立 `.envrc`，不污染全局 shell。
+克隆后运行一次：
 
 ```bash
-# 1) 装 direnv（macOS）
-brew install direnv
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc   # 或 bash
-exec zsh
-
-# 2) token 单独存一份带权限保护
-mkdir -p ~/.config/gitea-skills
-chmod 700 ~/.config/gitea-skills
-printf 'gta_xxxxxxxxxxxxxxxxxxxxxxxxxxx' > ~/.config/gitea-skills/quantpi.token
-chmod 600 ~/.config/gitea-skills/quantpi.token
-
-# 3) 在工作目录下放一个 .envrc（按你公司/家里/开源等场景各放一份）
-cd ~/code/my-work
-cat > .envrc <<'EOF'
-export GITEA_HOST="https://git.internal.company.com"
-export GITEA_ACCESS_TOKEN="$(cat ~/.config/gitea-skills/quantpi.token)"
-EOF
-direnv allow
-echo '.envrc' >> .gitignore   # 避免误提交
-
-# 4) 在该目录启动 opencode / claude / 任何 agent
-opencode    # bash tool 自动继承到 GITEA_HOST 与 GITEA_ACCESS_TOKEN
+bash setup.sh
 ```
 
-切到不同 Gitea 实例，就 cd 到对应工作目录；离开自动 unset，token 不残留。
+交互式输入 Gitea host 和 PAT，验证连通性，写入 `~/.config/gitea-skills/config`（chmod 600）。之后 skill 自动读取，**无需手动 export 任何变量**。
 
-### 极简退路：shell rc
+- 更新 token：`bash setup.sh`（再次运行覆盖）
+- 删除配置：`bash setup.sh --uninstall`
 
-只对接一个 Gitea 实例时，在 `~/.zshrc` / `~/.bashrc` 里 export：
-
-```bash
-export GITEA_HOST="https://git.internal.company.com"
-export GITEA_ACCESS_TOKEN="$(cat ~/.config/gitea-skills/quantpi.token)"
-```
-
-### 验证
-
-```bash
-# 1) 探连通性（无需 token）
-curl -fsSL "${GITEA_HOST}/api/v1/version" | jq
-
-# 2) token 有效性
-curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
-  "${GITEA_HOST}/api/v1/user" | jq '{login, id}'
-```
-
-完整说明（自签 CA / 反向代理 path 前缀 / `.netrc` / git 端信任）见 [gitea-shared/SKILL.md](gitea-shared/SKILL.md)。
+完整说明（自签 CA / 反向代理 path 前缀 / scope 选择）见 [gitea-shared/SKILL.md](gitea-shared/SKILL.md)。
 
 ## 用法示例
 
