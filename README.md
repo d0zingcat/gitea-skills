@@ -3,7 +3,7 @@
 [![lint](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml)
 [![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tested on Gitea 1.24.6](https://img.shields.io/badge/Gitea-1.24.6-tested-success)](#%E5%85%BC%E5%AE%B9%E6%80%A7)
+[![Gitea 1.21–1.25](https://img.shields.io/badge/Gitea-1.21%E2%80%931.25-success)](#%E5%85%BC%E5%AE%B9%E6%80%A7)
 
 > 中文 (you are here) · [English](README.en.md)
 
@@ -15,10 +15,17 @@
 
 ## 兼容性
 
-- **Gitea 1.24.6**（已在生产自部署实例上跑通）
-- 所有 endpoint 路径、参数名、响应字段名都对照同版本的 `swagger.v1.json` 校验过
-- 1.20–1.23 老版本大体能用；`gitea-actions` 与 `gitea-shared` 在文档里点出了路径差异
-- 周一会自动跑一次 [兼容矩阵 CI](.github/workflows/compatibility.yml)，覆盖 1.21/1.22/1.23/1.24/1.25，遇到回归会标红
+[![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
+
+CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对每个版本拉起 fresh Gitea 容器，用 admin token 跑创建 repo / 分支 / 文件 / issue / 评论 / 标签 / 里程碑 / PR / diff / 搜索 / 通知 / actions 路由探针约 30 项断言。
+
+| Gitea | 状态 | 备注 |
+|---|---|---|
+| 1.25 | ✅ | 全部 30 项通过 |
+| 1.24 | ✅ | 全部 30 项通过（也是文档校准的基准版本） |
+| 1.23 | ✅ | 28 项通过；search `sort=created` 在该版本不可用，已跳过 |
+| 1.22 | ✅ | 27 项通过；同 1.23 + 一项 search sort 兼容跳过 |
+| 1.21 | ✅ | 27 项通过 |
 
 整套 skill **面向自部署 Gitea 实例**：内网域名、自签名证书、反向代理 path 前缀、HTTP 明文部署、被禁用的模块——`gitea-shared` 都覆盖了。
 

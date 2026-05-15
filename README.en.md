@@ -3,7 +3,7 @@
 [![lint](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml)
 [![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tested on Gitea 1.24.6](https://img.shields.io/badge/Gitea-1.24.6-tested-success)](#tested-against)
+[![Gitea 1.21–1.25](https://img.shields.io/badge/Gitea-1.21%E2%80%931.25-success)](#tested-against)
 
 > [中文](README.md) · English (you are here)
 
@@ -15,9 +15,17 @@ Each skill loads only when the agent decides it's relevant. The agent then talks
 
 ## Tested against
 
-- **Gitea 1.24.6** (production self-hosted instance)
-- All endpoint paths and parameter names verified against the live `swagger.v1.json` of the same version
-- Older Gitea versions (1.20–1.23) should work for most domains; `gitea-actions` and `gitea-shared` call out version-specific paths where they differ
+[![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
+
+CI runs the [compatibility matrix](.github/workflows/compatibility.yml) weekly: a fresh Gitea container per version, an admin token, ~30 assertions covering create repo / branch / file / issue / comment / label / milestone / PR / diff / search / notifications / actions endpoints.
+
+| Gitea | Status | Notes |
+|---|---|---|
+| 1.25 | ✅ | 30/30 |
+| 1.24 | ✅ | 30/30 — baseline version the docs were calibrated on |
+| 1.23 | ✅ | 28/30 — `search?sort=created` not available, intentionally skipped |
+| 1.22 | ✅ | 27/30 — same as 1.23 plus one extra search-sort skip |
+| 1.21 | ✅ | 27/30 |
 
 The skills are **designed for self-hosted Gitea instances**: internal hostnames, self-signed certificates, reverse-proxy path prefixes, HTTP-only deployments, disabled modules — all covered in `gitea-shared`.
 
