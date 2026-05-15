@@ -15,17 +15,18 @@ jobs:
       matrix:
         gitea: ["1.21", "1.22", "1.23", "1.24", "1.25"]
 
-    services:
-      gitea:
-        image: gitea/gitea:${{ matrix.gitea }}
-        ports:
-          - 3000:3000
-        env:
-          GITEA__security__INSTALL_LOCK: "true"
-          GITEA__database__DB_TYPE: "sqlite3"
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start Gitea ${{ matrix.gitea }}
+        run: |
+          docker run -d --name gitea \
+            -p 3000:3000 \
+            -e GITEA__security__INSTALL_LOCK=true \
+            -e GITEA__database__DB_TYPE=sqlite3 \
+            -e GITEA__server__OFFLINE_MODE=true \
+            -e GITEA__service__DISABLE_REGISTRATION=true \
+            gitea/gitea:${{ matrix.gitea }}
 
       - name: Wait for Gitea to be ready
         run: |
@@ -38,24 +39,54 @@ jobs:
             sleep 1
           done
 
-      - name: Bootstrap admin user
+      - name: Bootstrap admin user (in-container)
         run: |
-          docker exec $(docker ps -q --filter "ancestor=gitea/gitea:${{ matrix.gitea }}") \
-            su git -c "gitea admin user create --admin --username smoke --password Test12345! --email smoke@example.com --must-change-password=false"
+          set -x
+          # Create admin user. --must-change-password is interpreted differently
+          # across Gitea versions; we always pass false explicitly.
+          docker exec -u git gitea \
+            gitea admin user create \
+              --admin \
+              --username smoke \
+              --password 'Test12345!Test' \
+              --email smoke@example.com \
+              --must-change-password=false
 
-      - name: Generate PAT
+      - name: Generate access token (via gitea CLI, scope-agnostic)
         id: pat
         run: |
-          TOKEN_RESP=$(curl -fsSL -u "smoke:Test12345!" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"smoke","scopes":["read:repository","write:repository","read:user"]}' \
-            http://localhost:3000/api/v1/users/smoke/tokens)
-          TOKEN=$(echo "$TOKEN_RESP" | python3 -c "import sys,json;print(json.load(sys.stdin)['sha1'])")
+          set -x
+          # `gitea admin user generate-access-token` was added in 1.20+, takes a
+          # --scopes flag. We give it the all permission so smoke tests don't
+          # care about per-version scope enum changes.
+          # The output looks like: "Access token was successfully created: <sha1>"
+          OUT=$(docker exec -u git gitea \
+            gitea admin user generate-access-token \
+              --username smoke \
+              --token-name smoke-ci \
+              --scopes all)
+          echo "$OUT"
+          TOKEN=$(echo "$OUT" | awk '/Access token was successfully created/ {print $NF}')
+          if [ -z "$TOKEN" ]; then
+            echo "::error::failed to extract token from CLI output"
+            exit 1
+          fi
           echo "::add-mask::$TOKEN"
           echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Verify token works
+        env:
+          T: ${{ steps.pat.outputs.token }}
+        run: |
+          curl -fsSL -H "Authorization: token $T" http://localhost:3000/api/v1/user | jq .login
 
       - name: Run smoke tests
         env:
           GITEA_HOST: http://localhost:3000
           GITEA_ACCESS_TOKEN: ${{ steps.pat.outputs.token }}
+          GITEA_VERSION: ${{ matrix.gitea }}
         run: bash scripts/smoke_test.sh
+
+      - name: Dump Gitea logs on failure
+        if: failure()
+        run: docker logs gitea | tail -200
