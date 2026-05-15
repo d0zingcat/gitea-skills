@@ -54,10 +54,10 @@ Total: 2,756 lines, all individual SKILL.md under 500 lines per skill-creator gu
 ### Option A: npx skills add (recommended)
 
 ```bash
-npx skills add d0zingcat/gitea-skills -g -y
+npx skills add d0zingcat/gitea-skills -g --all
 ```
 
-One command — auto clones and symlinks into the agent skills directory.
+One command — auto clones and installs all 13 skills into the agent skills directory.
 
 ### Option B: manual clone + symlink
 

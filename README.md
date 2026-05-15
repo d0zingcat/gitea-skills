@@ -54,10 +54,10 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 ### 方式 A：npx skills add（推荐）
 
 ```bash
-npx skills add d0zingcat/gitea-skills -g -y
+npx skills add d0zingcat/gitea-skills -g --all
 ```
 
-一行搞定，自动 clone + symlink 到 agent skill 目录。
+一行搞定，自动 clone + 全部 13 个 skill 一次性 symlink 到 agent skill 目录。
 
 ### 方式 B：手动克隆 + symlink
 
