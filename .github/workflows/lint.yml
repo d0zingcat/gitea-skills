@@ -55,8 +55,10 @@ jobs:
             --no-progress
             --exclude-loopback
             --exclude '^https?://(your-gitea|git\.internal\.company\.com|git\.example\.com|gitea\.quantpi\.cn|example\.com|.*\.example\.com)'
+            --exclude '^https?://github\.com/d0zingcat/gitea-skills/(compare|releases/tag)/'
             --accept '200..=299,401,403'
             ./README.md
+            ./README.en.md
             ./CHANGELOG.md
             ./examples/*.md
             ./gitea-*/SKILL.md
