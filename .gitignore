@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Editor / backup files
+*.bak
+*~
+*.swp
+.idea/
+.vscode/
+
+# Local agent / token files
+.gitea_env
+.env
+.env.local
+
+# Build artifacts
+*.skill
+dist/
