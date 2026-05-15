@@ -204,8 +204,16 @@ json_extract "create milestone" \
 
 echo
 echo "== gitea-pull =="
-# Update file on feat/x to create a divergent commit, then open PR
-SHA=$(api "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt?ref=feat/x" 2>/dev/null | jq -r '.sha // empty')
+# Update file on feat/x to create a divergent commit, then open PR.
+# Some Gitea versions take a beat after branch creation before contents API
+# returns the file on the new branch — short retry loop.
+SHA=""
+for i in 1 2 3 4 5; do
+  SHA=$(api "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt?ref=feat/x" 2>/dev/null \
+    | jq -r '.sha // empty')
+  [ -n "$SHA" ] && break
+  sleep 1
+done
 if [ -n "$SHA" ]; then
   NEW=$(printf "hello v2\n" | base64)
   api -X PUT -H "Content-Type: application/json" \
