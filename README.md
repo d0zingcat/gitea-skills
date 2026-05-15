@@ -51,27 +51,23 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 
 ## 安装
 
-skill 走标准 agent-skill 布局（`<skill-name>/SKILL.md` + YAML frontmatter）。把这个目录指给你 agent 的 skill 加载器即可。
+### 方式 A：npx skills add（推荐）
 
-### 方式 A：克隆 + symlink
+```bash
+npx skills add d0zingcat/gitea-skills -g -y
+```
+
+一行搞定，自动 clone + symlink 到 agent skill 目录。
+
+### 方式 B：手动克隆 + symlink
 
 ```bash
 git clone https://github.com/d0zingcat/gitea-skills.git ~/code/gitea-skills
 
-# 让 agent 能加载（按你的 agent 调整目标路径）
 mkdir -p ~/.agents/skills
 for d in ~/code/gitea-skills/gitea-*/; do
   ln -s "$d" ~/.agents/skills/
 done
-```
-
-### 方式 B：直接克隆到 skill 目录
-
-```bash
-cd ~/.agents/skills
-git clone https://github.com/d0zingcat/gitea-skills.git tmp
-mv tmp/gitea-* .
-rm -rf tmp
 ```
 
 安装完后重启 agent 让它扫到新 skill。

@@ -51,28 +51,23 @@ Total: 2,756 lines, all individual SKILL.md under 500 lines per skill-creator gu
 
 ## Installation
 
-These skills follow the standard agent-skill layout (`<skill-name>/SKILL.md` with YAML frontmatter). Install by pointing your agent's skill loader at this directory.
-
-### Option A: clone + symlink (simple)
+### Option A: npx skills add (recommended)
 
 ```bash
-git clone https://your-gitea/your-org/gitea-skills.git ~/code/gitea-skills
+npx skills add d0zingcat/gitea-skills -g -y
+```
 
-# Then link each skill into the agent's skills directory.
-# Adjust the target path to your agent (Claude Code, OpenCode, etc.).
+One command — auto clones and symlinks into the agent skills directory.
+
+### Option B: manual clone + symlink
+
+```bash
+git clone https://github.com/d0zingcat/gitea-skills.git ~/code/gitea-skills
+
 mkdir -p ~/.agents/skills
 for d in ~/code/gitea-skills/gitea-*/; do
   ln -s "$d" ~/.agents/skills/
 done
-```
-
-### Option B: clone directly into the skills dir
-
-```bash
-cd ~/.agents/skills
-git clone https://your-gitea/your-org/gitea-skills.git tmp
-mv tmp/gitea-* .
-rm -rf tmp
 ```
 
 After installation, restart the agent so it picks up the new skills.
