@@ -106,13 +106,23 @@ export CURL_CA_BUNDLE="$HOME/.config/internal-ca.crt"
 # ── 加载 gitea-skills 配置（每次 Gitea 操作前必须先执行）──
 _cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
 [ -f "$_cfg" ] && . "$_cfg"
+if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
+  echo "ERROR: GITEA_HOST 或 GITEA_ACCESS_TOKEN 未设置。请先运行: bash setup.sh" >&2
+  exit 1
+fi
 ```
+
+如果 config 文件不存在且 env 也没有，上面的片段会直接报错并提示用户运行 `setup.sh`。agent 看到这个错误时应当**停止当前操作**，告诉用户执行 `bash setup.sh` 完成首次配置。
 
 之后紧跟 curl 命令。完整示例：
 
 ```bash
 _cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
 [ -f "$_cfg" ] && . "$_cfg"
+if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
+  echo "ERROR: GITEA_HOST 或 GITEA_ACCESS_TOKEN 未设置。请先运行: bash setup.sh" >&2
+  exit 1
+fi
 
 curl -fsSL \
   -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
