@@ -1,6 +1,6 @@
 ---
 name: gitea-search
-version: 1.0.0
+version: 0.0.1
 description: "Gitea 搜索：跨仓库搜索 issue/PR、搜索仓库、用户、组织团队。涵盖 /repos/issues/search、/repos/search、/users/search、/orgs/{org}/teams/search endpoint。当用户需要在 Gitea 上跨多个仓库找 issue、按关键字找仓库或用户、找组织内某团队时使用。"
 ---
 

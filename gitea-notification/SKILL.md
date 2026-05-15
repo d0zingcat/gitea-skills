@@ -1,6 +1,6 @@
 ---
 name: gitea-notification
-version: 1.0.0
+version: 0.0.1
 description: "Gitea 通知：列出未读/已读通知（用户级或仓库级）、获取单个 thread 详情、标记已读、批量标记。涵盖 /notifications 与 /repos/{owner}/{repo}/notifications endpoint。当用户需要查 Gitea 收件箱、批量清掉未读、看某条通知详情时使用。"
 ---
 

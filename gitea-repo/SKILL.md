@@ -1,6 +1,6 @@
 ---
 name: gitea-repo
-version: 1.0.0
+version: 0.0.1
 description: "Gitea 仓库操作：仓库创建/Fork/列表、分支管理、Commit 查询、文件读写、Tag 与 Release、目录树。涵盖 repos/branches/commits/contents/releases/tags/git/trees 系列 REST endpoint。当用户需要在 Gitea 上 list/create repo、fork、新建/删除 branch、读取或编辑文件、查 commit、打 tag、发 release、看仓库目录结构时使用。"
 ---
 

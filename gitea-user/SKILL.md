@@ -1,6 +1,6 @@
 ---
 name: gitea-user
-version: 1.0.0
+version: 0.0.1
 description: "Gitea 用户与组织：获取当前用户信息、列出当前用户所属组织、获取 Gitea 实例版本。涵盖 /user、/user/orgs、/version endpoint。当用户需要确认 Gitea 登录身份、查 token 对应哪个用户、列出我加入的 org 或确认 Gitea 版本时使用。"
 ---
 

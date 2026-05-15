@@ -1,6 +1,6 @@
 ---
 name: gitea-actions
-version: 1.0.0
+version: 0.0.1
 description: "Gitea Actions：列工作流、列运行（runs/tasks）、dispatch workflow、读 job 日志、读写仓库/组织/用户级 secrets 与 variables、管理 artifacts 与 runners、enable/disable workflow。涵盖 /repos/{o}/{r}/actions、/orgs/{org}/actions、/user/actions、/admin/actions 系列 endpoint。当用户需要看 CI 跑得怎么样、手动 dispatch workflow、查 build 日志、配 CI 用的 token 或环境变量、管理 self-hosted runner、下载 build 产物时使用。"
 ---
 

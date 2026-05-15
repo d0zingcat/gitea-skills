@@ -1,6 +1,6 @@
 ---
 name: gitea-issue
-version: 1.0.0
+version: 0.0.1
 description: "Gitea Issue 管理：创建/列出/更新 issue、添加/编辑评论、读写标签关联。涵盖 /repos/{owner}/{repo}/issues 系列 endpoint。当用户需要在 Gitea 上提 issue、看 issue 列表、加评论、改状态、给 issue 打/取消标签时使用。Issue 与 PR 共享 number 命名空间，但 PR 专用操作请用 gitea-pull skill。"
 ---
 

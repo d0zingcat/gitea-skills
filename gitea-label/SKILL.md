@@ -1,6 +1,6 @@
 ---
 name: gitea-label
-version: 1.0.0
+version: 0.0.1
 description: "Gitea Label 管理：仓库级和组织级 label 的列出/创建/编辑/删除。涵盖 /repos/{owner}/{repo}/labels 与 /orgs/{org}/labels endpoint。当用户需要在 Gitea 仓库或组织里管理 issue/PR 标签、批量创建 label、给标签改色或归档时使用。"
 ---
 

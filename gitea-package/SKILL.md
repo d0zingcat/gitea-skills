@@ -1,6 +1,6 @@
 ---
 name: gitea-package
-version: 1.0.0
+version: 0.0.1
 description: "Gitea Packages 注册中心：列出包（每个版本一条）、列版本、看版本详情、看 latest、列文件、删除版本、把包绑定/解绑到仓库（用于权限继承）。涵盖 /packages/{owner} 系列 endpoint，支持 alpine/cargo/chef/composer/conan/conda/container/cran/debian/generic/go/helm/maven/npm/nuget/pub/pypi/rpm/rubygems/swift/vagrant 等类型。当用户需要在 Gitea Packages 上看某 owner 发布的包、清理旧版本镜像、查包元数据、把包关联到某个仓库时使用。"
 ---
 

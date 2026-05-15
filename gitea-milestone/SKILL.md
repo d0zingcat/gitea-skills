@@ -1,6 +1,6 @@
 ---
 name: gitea-milestone
-version: 1.0.0
+version: 0.0.1
 description: "Gitea Milestone：仓库级里程碑的列出/获取/创建/更新/删除。涵盖 /repos/{owner}/{repo}/milestones endpoint。当用户需要在 Gitea 上管理 milestone、给 issue/PR 关联里程碑、设截止日期或关闭里程碑时使用。"
 ---
 

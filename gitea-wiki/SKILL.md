@@ -1,6 +1,6 @@
 ---
 name: gitea-wiki
-version: 1.0.0
+version: 0.0.1
 description: "Gitea Wiki：列出/读取/创建/更新/删除 Wiki 页面、查页面修订历史。涵盖 /repos/{owner}/{repo}/wiki 系列 endpoint。当用户需要在 Gitea Wiki 上写文档、看 wiki 历史、批量整理 wiki 页面时使用。"
 ---
 

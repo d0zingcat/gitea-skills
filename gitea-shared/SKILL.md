@@ -1,6 +1,6 @@
 ---
 name: gitea-shared
-version: 1.0.0
+version: 0.0.1
 description: "Gitea REST API 共享基础（面向自部署 Gitea 实例）：host 与 token 配置、curl 调用约定、自签名/内网 TLS、分页、错误处理、版本兼容、安全规则。所有 gitea-* skill 在调用 API 前都依赖这里的约定。当用户首次需要操作自部署 Gitea、配置 GITEA_HOST/GITEA_ACCESS_TOKEN、遇到 SSL 证书错误、401/403/404、需要批量分页、或要写一段 curl 调 Gitea 时使用。"
 ---
 

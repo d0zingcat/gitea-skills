@@ -1,6 +1,6 @@
 ---
 name: gitea-timetracking
-version: 1.0.0
+version: 0.0.1
 description: "Gitea 工时跟踪：issue 秒表（开始/停止/取消）、手动追加和删除工时记录、按 issue/仓库/当前用户列工时。涵盖 /repos/{owner}/{repo}/issues/{n}/stopwatch 与 /times endpoint。当用户需要在 Gitea 上对 issue 计时、统计某仓库工时、查看自己的工时记录时使用。"
 ---
 

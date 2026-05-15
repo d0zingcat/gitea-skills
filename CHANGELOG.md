@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] – 2026-05-15
+## [0.0.1] – 2026-05-15
 
 ### Added
 
@@ -56,5 +56,5 @@ These are absent from the upstream API itself, not the skills:
 - No cancel-run or rerun-run endpoint.
 - All documented in `gitea-actions/SKILL.md` with Web UI fallbacks.
 
-[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/d0zingcat/gitea-skills/releases/tag/v1.0.0
+[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/d0zingcat/gitea-skills/releases/tag/v0.0.1

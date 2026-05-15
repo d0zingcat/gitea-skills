@@ -1,6 +1,6 @@
 ---
 name: gitea-pull
-version: 1.0.0
+version: 0.0.1
 description: "Gitea Pull Request 管理：创建/编辑/合并/关闭 PR、读 diff 与文件清单、Review 流程（创建 review、提交 pending review、批准/驳回/dismiss、添加内联评论）、reviewers 增减、用 base 更新 PR 分支。涵盖 /repos/{owner}/{repo}/pulls 系列 endpoint。当用户需要在 Gitea 上提 PR、合并 PR、走代码评审流程、回滚 review、查 PR 改动文件或 diff 时使用。"
 ---
 
