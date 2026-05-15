@@ -1,0 +1,61 @@
+name: compatibility-matrix
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly on Monday 02:00 UTC, to catch upstream Gitea regressions
+    - cron: "0 2 * * 1"
+
+jobs:
+  smoke:
+    name: Smoke test ${{ matrix.gitea }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gitea: ["1.21", "1.22", "1.23", "1.24", "1.25"]
+
+    services:
+      gitea:
+        image: gitea/gitea:${{ matrix.gitea }}
+        ports:
+          - 3000:3000
+        env:
+          GITEA__security__INSTALL_LOCK: "true"
+          GITEA__database__DB_TYPE: "sqlite3"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Gitea to be ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsSL http://localhost:3000/api/v1/version >/dev/null 2>&1; then
+              echo "Gitea up after ${i}s"
+              curl -fsSL http://localhost:3000/api/v1/version
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Bootstrap admin user
+        run: |
+          docker exec $(docker ps -q --filter "ancestor=gitea/gitea:${{ matrix.gitea }}") \
+            su git -c "gitea admin user create --admin --username smoke --password Test12345! --email smoke@example.com --must-change-password=false"
+
+      - name: Generate PAT
+        id: pat
+        run: |
+          TOKEN_RESP=$(curl -fsSL -u "smoke:Test12345!" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"smoke","scopes":["read:repository","write:repository","read:user"]}' \
+            http://localhost:3000/api/v1/users/smoke/tokens)
+          TOKEN=$(echo "$TOKEN_RESP" | python3 -c "import sys,json;print(json.load(sys.stdin)['sha1'])")
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Run smoke tests
+        env:
+          GITEA_HOST: http://localhost:3000
+          GITEA_ACCESS_TOKEN: ${{ steps.pat.outputs.token }}
+        run: bash scripts/smoke_test.sh

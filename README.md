@@ -1,136 +1,149 @@
 # gitea-skills
 
-A set of 13 [agent skills](https://docs.claude.com/en/docs/claude-code/skills) that wrap the Gitea REST API, designed to replace the [gitea-mcp](https://gitea.com/gitea/gitea-mcp) server with progressive-disclosure markdown documents that consume far less LLM context.
+[![lint](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml)
+[![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tested on Gitea 1.24.6](https://img.shields.io/badge/Gitea-1.24.6-tested-success)](#%E5%85%BC%E5%AE%B9%E6%80%A7)
 
-Each skill loads only when the agent decides it's relevant. The agent then talks to Gitea via plain `curl` + `jq`, with no extra binary or daemon to install.
+> 中文 (you are here) · [English](README.en.md)
 
-> **Why not the MCP server?** The MCP approach injects all ~80 tool schemas into every conversation, even ones unrelated to Gitea. That's a lot of context spent on schemas you may never call. With skills, the description of each domain (~100 words) lives in metadata; the full instructions only load when triggered.
+把 [gitea-mcp](https://gitea.com/gitea/gitea-mcp) 的 80 多个 tool 用 13 个 [agent skill](https://docs.claude.com/en/docs/claude-code/skills) 重新组织。每个 skill 是一份按需加载的 markdown 文档，整体让 LLM 上下文占用大幅下降。
 
-## Tested against
+只在 agent 判断"和 Gitea 相关"时才会把对应 SKILL.md 注入上下文；agent 接着用纯 `curl` + `jq` 跟 Gitea 通信，**不需要额外安装任何二进制或 daemon**。
 
-- **Gitea 1.24.6** (production self-hosted instance)
-- All endpoint paths and parameter names verified against the live `swagger.v1.json` of the same version
-- Older Gitea versions (1.20–1.23) should work for most domains; `gitea-actions` and `gitea-shared` call out version-specific paths where they differ
+> **为什么不直接用 MCP server？** MCP 的工作方式是把全部 80 余个 tool schema 一次性塞进每次对话，哪怕本次根本用不上 Gitea。skill 模式下，每个域只在元数据里留约 100 字的描述，详细指令在被触发时才加载。
 
-The skills are **designed for self-hosted Gitea instances**: internal hostnames, self-signed certificates, reverse-proxy path prefixes, HTTP-only deployments, disabled modules — all covered in `gitea-shared`.
+## 兼容性
 
-## The 13 skills
+- **Gitea 1.24.6**（已在生产自部署实例上跑通）
+- 所有 endpoint 路径、参数名、响应字段名都对照同版本的 `swagger.v1.json` 校验过
+- 1.20–1.23 老版本大体能用；`gitea-actions` 与 `gitea-shared` 在文档里点出了路径差异
+- 周一会自动跑一次 [兼容矩阵 CI](.github/workflows/compatibility.yml)，覆盖 1.21/1.22/1.23/1.24/1.25，遇到回归会标红
 
-| Skill | What it covers | When it triggers |
-|-------|---------------|------------------|
-| [gitea-shared](gitea-shared/SKILL.md) | Auth, host config, TLS, pagination, error handling, version compat, security rules | First time using Gitea, SSL errors, 401/403/404, configuring `GITEA_HOST`/`GITEA_ACCESS_TOKEN` |
-| [gitea-repo](gitea-repo/SKILL.md) | Repos, branches, commits, file read/write, tags, releases, tree | Create/list/fork repos, manage branches, read or edit files, tag, release, browse tree |
-| [gitea-issue](gitea-issue/SKILL.md) | Issues, comments, labels assoc., reactions | File issues, comment, change state, label issues |
-| [gitea-pull](gitea-pull/SKILL.md) | PRs, reviews, merge, reviewers, diff/files/commits | Open/merge PRs, run code review flow, dismiss reviews |
-| [gitea-actions](gitea-actions/SKILL.md) | Workflows, runs (tasks), job logs, artifacts, runners, secrets/variables (repo/org/user), enable/disable | CI status, dispatch workflows, fetch build logs, manage runners |
-| [gitea-wiki](gitea-wiki/SKILL.md) | Wiki pages, revisions | Manage repo wiki content |
-| [gitea-label](gitea-label/SKILL.md) | Repo + org labels | Manage labels, batch create, archive |
-| [gitea-milestone](gitea-milestone/SKILL.md) | Repo milestones | Create/close milestones, set due dates |
-| [gitea-notification](gitea-notification/SKILL.md) | User notifications | Inbox, mark read, scope by repo/subject |
-| [gitea-search](gitea-search/SKILL.md) | Cross-repo issues/PRs, repos, users, org teams | Find things across the instance |
-| [gitea-user](gitea-user/SKILL.md) | Current user, user orgs, instance version | Verify identity, list joined orgs, check Gitea version |
-| [gitea-package](gitea-package/SKILL.md) | Packages registry (container/npm/maven/...) | Browse packages, clean old versions, link to repos |
-| [gitea-timetracking](gitea-timetracking/SKILL.md) | Issue stopwatches, time entries | Track issue time, report by repo/user |
+整套 skill **面向自部署 Gitea 实例**：内网域名、自签名证书、反向代理 path 前缀、HTTP 明文部署、被禁用的模块——`gitea-shared` 都覆盖了。
 
-Total: 2,756 lines, all individual SKILL.md under 500 lines per skill-creator guidelines.
+## 13 个 skill
 
-## Installation
+| Skill | 范围 | 触发场景 |
+|-------|------|---------|
+| [gitea-shared](gitea-shared/SKILL.md) | 认证、host、TLS、分页、错误处理、版本兼容、安全规则 | 第一次用 Gitea、SSL 错误、401/403/404、配 `GITEA_HOST`/`GITEA_ACCESS_TOKEN` |
+| [gitea-repo](gitea-repo/SKILL.md) | 仓库、分支、commit、文件读写、tag、release、tree | 创建/列出/fork 仓库、管理分支、读写文件、打 tag、发 release |
+| [gitea-issue](gitea-issue/SKILL.md) | issue、评论、标签关联、表情回应 | 提 issue、评论、改状态、打标签 |
+| [gitea-pull](gitea-pull/SKILL.md) | PR、review、合并、reviewers、diff/files/commits | 提交 PR、走代码评审、合并 PR、撤销 review |
+| [gitea-actions](gitea-actions/SKILL.md) | workflows、runs（tasks）、job 日志、artifacts、runners、secrets/variables（仓库/组织/用户级）、enable/disable | 看 CI、手动 dispatch、查 build 日志、管理 runner |
+| [gitea-wiki](gitea-wiki/SKILL.md) | Wiki 页面、修订历史 | 在 Gitea Wiki 上写文档 |
+| [gitea-label](gitea-label/SKILL.md) | 仓库 + 组织 label | 管理标签、批量创建、归档 |
+| [gitea-milestone](gitea-milestone/SKILL.md) | 仓库里程碑 | 创建/关闭里程碑、设置截止时间 |
+| [gitea-notification](gitea-notification/SKILL.md) | 用户通知收件箱 | 看 Gitea 收件箱、批量已读 |
+| [gitea-search](gitea-search/SKILL.md) | 跨仓库搜 issue/PR、找仓库、用户、团队 | 全实例查找 |
+| [gitea-user](gitea-user/SKILL.md) | 当前用户、所属组织、实例版本 | 验证身份、查所属 org、看 Gitea 版本 |
+| [gitea-package](gitea-package/SKILL.md) | 包注册中心（container/npm/maven/...） | 浏览包、清理旧版本、绑到仓库 |
+| [gitea-timetracking](gitea-timetracking/SKILL.md) | issue 秒表、工时记录 | 给 issue 计时、按仓库/人统计 |
 
-These skills follow the standard agent-skill layout (`<skill-name>/SKILL.md` with YAML frontmatter). Install by pointing your agent's skill loader at this directory.
+总文档量 2756 行，单文件均 < 500 行（符合 skill-creator 规范）。
 
-### Option A: clone + symlink (simple)
+## 安装
+
+skill 走标准 agent-skill 布局（`<skill-name>/SKILL.md` + YAML frontmatter）。把这个目录指给你 agent 的 skill 加载器即可。
+
+### 方式 A：克隆 + symlink
 
 ```bash
-git clone https://your-gitea/your-org/gitea-skills.git ~/code/gitea-skills
+git clone https://github.com/d0zingcat/gitea-skills.git ~/code/gitea-skills
 
-# Then link each skill into the agent's skills directory.
-# Adjust the target path to your agent (Claude Code, OpenCode, etc.).
+# 让 agent 能加载（按你的 agent 调整目标路径）
 mkdir -p ~/.agents/skills
 for d in ~/code/gitea-skills/gitea-*/; do
   ln -s "$d" ~/.agents/skills/
 done
 ```
 
-### Option B: clone directly into the skills dir
+### 方式 B：直接克隆到 skill 目录
 
 ```bash
 cd ~/.agents/skills
-git clone https://your-gitea/your-org/gitea-skills.git tmp
+git clone https://github.com/d0zingcat/gitea-skills.git tmp
 mv tmp/gitea-* .
 rm -rf tmp
 ```
 
-After installation, restart the agent so it picks up the new skills.
+安装完后重启 agent 让它扫到新 skill。
 
-## Configuration
+## 配置
 
-Set two environment variables before invoking any Gitea skill:
+调用任何 Gitea skill 前先设两个环境变量：
 
 ```bash
-# Self-hosted instance examples
+# 自部署实例
 export GITEA_HOST="https://git.internal.company.com"
-# or with reverse-proxy path prefix
+# 反向代理带 path 前缀
 export GITEA_HOST="https://example.com/gitea"
-# or HTTP intranet on non-standard port
+# 内网 HTTP 非标端口
 export GITEA_HOST="http://192.168.1.10:3000"
 
-# Personal Access Token from Settings → Applications → Manage Access Tokens
+# Settings → Applications → Manage Access Tokens 生成 PAT
 export GITEA_ACCESS_TOKEN="gta_xxxxxxxxxxxx"
 ```
 
-The full configuration story (scopes for Gitea 1.20+, self-signed CA handling, `.netrc` alternative, git-side trust setup) lives in [gitea-shared/SKILL.md](gitea-shared/SKILL.md).
+完整配置说明（Gitea 1.20+ 的细粒度 scope、自签名 CA 处理、`.netrc` 备选、git 端信任）见 [gitea-shared/SKILL.md](gitea-shared/SKILL.md)。
 
-## Quick smoke test
+## 快速冒烟
 
 ```bash
-# Connectivity (no token required)
+# 连通性（无需 token）
 curl -fsSL "${GITEA_HOST}/api/v1/version" | jq
 
-# Token validity
+# token 有效性
 curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
   "${GITEA_HOST}/api/v1/user" | jq '{login, id}'
 ```
 
-## Usage examples
+## 用法示例
 
-Once installed, the agent picks the right skill based on what you ask:
+详见 [examples/](examples/) 目录的完整演示：
 
-- "list my open PRs in productivity org" → `gitea-search` triggers
-- "create an issue in foo/bar with title 'memory leak'" → `gitea-issue`
-- "what's the latest CI run status for foo/bar?" → `gitea-actions`
-- "merge PR #42 in foo/bar with squash" → `gitea-pull` (will confirm before merging)
+| # | 示例 | 涉及 skill |
+|---|------|-----------|
+| 1 | [跨仓库列出我的 open PR](examples/01-list-my-open-prs.md) | `gitea-search` |
+| 2 | [建一个 bug issue 并打标签](examples/02-create-issue-and-label.md) | `gitea-issue` + `gitea-label` |
+| 3 | [合并 PR 的安全流程](examples/03-merge-pr-with-confirmation.md) | `gitea-pull` |
+| 4 | [触发 workflow 并轮询结果](examples/04-trigger-and-wait-workflow.md) | `gitea-actions` |
+| 5 | [清理旧的 container 版本](examples/05-cleanup-old-package-versions.md) | `gitea-package` |
 
-The agent reads the relevant SKILL.md, constructs the right `curl`, and executes. Destructive operations (merge, delete, secret PUT, workflow dispatch) require explicit user confirmation per the rules in `gitea-shared`.
+安装好之后，agent 会根据你说什么挑对应 skill。破坏性操作（merge、delete、PUT secret、workflow dispatch）按 `gitea-shared` 的规则，必须先和你确认。
 
-## Design principles
+## 设计原则
 
-1. **Plain curl + jq, no extra dependencies.** Every example is a real shell command you could paste.
-2. **Swagger as ground truth.** When the gitea-mcp source code and Gitea OpenAPI disagreed, the OpenAPI won. The skills tell the agent to consult `${GITEA_HOST}/swagger.v1.json` whenever uncertain.
-3. **Progressive disclosure.** Top-level descriptions are ~100 words. Full SKILL.md only loads when triggered. Reference sections inside each skill are easy to skim.
-4. **Self-hosted by default.** TLS, reverse proxy, disabled modules are first-class concerns.
-5. **Security guardrails.** Tokens never echoed; destructive ops always confirmed; Web UI fallback when API is missing.
+1. **纯 curl + jq，零额外依赖。** 每个示例都是可直接粘贴的 shell。
+2. **OpenAPI 是真理。** 当 gitea-mcp 源码和 Gitea OpenAPI 不一致，以 OpenAPI 为准。skill 也提示 agent 在不确定时直接 jq `${GITEA_HOST}/swagger.v1.json`。
+3. **渐进式加载。** 顶层描述约 100 字；完整 SKILL.md 只在被触发时加载。
+4. **自部署优先。** TLS、反代、模块开关都是一等公民。
+5. **安全护栏。** token 不回显、破坏性操作必确认、API 缺失时给出 Web UI 退路。
 
-## Limitations / known gaps in Gitea 1.24.6
+## Gitea 1.24.6 的已知 API 缺口
 
-These come from the Gitea API itself, not the skills:
+下列限制来自 Gitea 上游 API 本身，不是 skill 的锅：
 
-- No `GET /actions/runs/{id}` (single-run details endpoint)
-- No `list jobs` API; you must already know the `job_id` to fetch logs
-- No `cancel run` or `rerun run` endpoint
-- These are documented in `gitea-actions/SKILL.md` with "open the Web UI" fallbacks
+- 没有 `GET /actions/runs/{id}`（单 run 详情）
+- 没有 list-jobs API；要拉 job log 必须从外部（webhook 回调、Web UI）拿到 `job_id`
+- 没有 cancel-run / rerun-run
 
-## Contributing
+`gitea-actions/SKILL.md` 给出"打开 Web UI"的退路。
 
-Issues and PRs welcome. The skill-creator workflow we used:
-1. Read gitea-mcp Go source for endpoint inventory
-2. Diff against `${GITEA_HOST}/swagger.v1.json`
-3. Run live smoke tests against a real Gitea instance
-4. Iterate until both pass
+## 贡献
 
-If you find an endpoint that behaves differently on a Gitea version other than 1.24.6, please open an issue with:
-- Gitea version (`/api/v1/version`)
-- Endpoint path
-- Observed vs expected behavior
+欢迎 issue 和 PR。我们的迭代流程：
+
+1. 读 gitea-mcp 的 Go 源码盘点 endpoint
+2. 对照 `${GITEA_HOST}/swagger.v1.json` 找差异
+3. 在真实 Gitea 实例上跑只读冒烟
+4. 两边都过才合入
+
+如果你在某个非 1.24.6 的 Gitea 版本上发现行为不一样，请提 issue 附：
+
+- Gitea 版本（`/api/v1/version` 输出）
+- 出问题的 endpoint 路径
+- 实测 vs 文档预期的差异
 
 ## License
 

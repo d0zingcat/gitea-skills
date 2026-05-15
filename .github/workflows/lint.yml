@@ -1,0 +1,64 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate frontmatter & links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate skills.json against on-disk skills
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          manifest = json.loads(Path('skills.json').read_text())
+          declared = {s['name']: s for s in manifest['skills']}
+
+          on_disk = sorted(p.name for p in Path('.').glob('gitea-*') if p.is_dir())
+          declared_names = sorted(declared.keys())
+
+          if declared_names != on_disk:
+              missing = set(on_disk) - set(declared_names)
+              extra = set(declared_names) - set(on_disk)
+              print(f'mismatch: missing-from-manifest={missing}, extra-in-manifest={extra}', file=sys.stderr)
+              sys.exit(1)
+
+          # cross-check version + path
+          for name, entry in declared.items():
+              if entry['path'] != f'{name}/SKILL.md':
+                  print(f'{name}: bad path {entry["path"]}', file=sys.stderr); sys.exit(1)
+              if not Path(entry['path']).exists():
+                  print(f'{name}: SKILL.md not found at {entry["path"]}', file=sys.stderr); sys.exit(1)
+          print(f'manifest OK: {len(declared)} skills')
+          PY
+
+      - name: Validate YAML frontmatter
+        run: python3 scripts/validate_frontmatter.py
+
+      - name: Markdown link check (lychee)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --exclude-loopback
+            --exclude '^https?://(your-gitea|git\.internal\.company\.com|git\.example\.com|gitea\.quantpi\.cn|example\.com|.*\.example\.com)'
+            --accept '200..=299,401,403'
+            ./README.md
+            ./CHANGELOG.md
+            ./examples/*.md
+            ./gitea-*/SKILL.md
+          fail: true
+        continue-on-error: false

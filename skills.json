@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "gitea-skills",
+  "version": "1.0.0",
+  "description": "13 agent skills wrapping the Gitea REST API for self-hosted Gitea instances",
+  "homepage": "https://github.com/d0zingcat/gitea-skills",
+  "license": "MIT",
+  "tested_against": [
+    "1.24.6"
+  ],
+  "skills": [
+    {
+      "name": "gitea-shared",
+      "version": "1.0.0",
+      "path": "gitea-shared/SKILL.md",
+      "description": "Shared base for all gitea-* skills: auth, host, TLS, pagination, error handling, security",
+      "tags": ["base", "auth", "config"]
+    },
+    {
+      "name": "gitea-repo",
+      "version": "1.0.0",
+      "path": "gitea-repo/SKILL.md",
+      "description": "Repos, branches, commits, files, tags, releases, tree",
+      "tags": ["repository", "git"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-issue",
+      "version": "1.0.0",
+      "path": "gitea-issue/SKILL.md",
+      "description": "Issues, comments, labels association, reactions",
+      "tags": ["issue", "collab"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-pull",
+      "version": "1.0.0",
+      "path": "gitea-pull/SKILL.md",
+      "description": "Pull requests, reviews, merge, reviewers",
+      "tags": ["pull-request", "review", "collab"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-actions",
+      "version": "1.0.0",
+      "path": "gitea-actions/SKILL.md",
+      "description": "Workflows, runs, job logs, artifacts, runners, secrets, variables",
+      "tags": ["ci", "actions"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-wiki",
+      "version": "1.0.0",
+      "path": "gitea-wiki/SKILL.md",
+      "description": "Wiki pages and revisions",
+      "tags": ["wiki", "docs"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-label",
+      "version": "1.0.0",
+      "path": "gitea-label/SKILL.md",
+      "description": "Repository and organization labels",
+      "tags": ["label", "metadata"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-milestone",
+      "version": "1.0.0",
+      "path": "gitea-milestone/SKILL.md",
+      "description": "Repository milestones",
+      "tags": ["milestone", "planning"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-notification",
+      "version": "1.0.0",
+      "path": "gitea-notification/SKILL.md",
+      "description": "User notification inbox",
+      "tags": ["notification"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-search",
+      "version": "1.0.0",
+      "path": "gitea-search/SKILL.md",
+      "description": "Cross-repo search for issues/PRs, repos, users, teams",
+      "tags": ["search"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-user",
+      "version": "1.0.0",
+      "path": "gitea-user/SKILL.md",
+      "description": "Current user, user orgs, instance version",
+      "tags": ["user", "org"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-package",
+      "version": "1.0.0",
+      "path": "gitea-package/SKILL.md",
+      "description": "Packages registry: list, versions, files, link, delete",
+      "tags": ["package", "registry"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-timetracking",
+      "version": "1.0.0",
+      "path": "gitea-timetracking/SKILL.md",
+      "description": "Issue stopwatches and time entries",
+      "tags": ["time-tracking"],
+      "depends_on": ["gitea-shared"]
+    }
+  ]
+}
