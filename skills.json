@@ -1,17 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "gitea-skills",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "13 agent skills wrapping the Gitea REST API for self-hosted Gitea instances",
   "homepage": "https://github.com/d0zingcat/gitea-skills",
   "license": "MIT",
   "tested_against": [
-    "1.24.6"
+    "1.26.4"
   ],
   "skills": [
     {
       "name": "gitea-shared",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "path": "gitea-shared/SKILL.md",
       "description": "Shared base for all gitea-* skills: auth, host, TLS, pagination, error handling, security",
       "tags": ["base", "auth", "config"]
@@ -42,9 +42,9 @@
     },
     {
       "name": "gitea-actions",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "path": "gitea-actions/SKILL.md",
-      "description": "Workflows, runs, job logs, artifacts, runners, secrets, variables",
+      "description": "Workflows, runs, jobs, job logs, artifacts, runners, secrets, variables",
       "tags": ["ci", "actions"],
       "depends_on": ["gitea-shared"]
     },

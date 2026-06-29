@@ -3,7 +3,7 @@
 [![lint](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml)
 [![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Gitea 1.21–1.25](https://img.shields.io/badge/Gitea-1.21%E2%80%931.25-success)](#tested-against)
+[![Gitea 1.21–1.26](https://img.shields.io/badge/Gitea-1.21%E2%80%931.26-success)](#tested-against)
 
 > [中文](README.md) · English (you are here)
 
@@ -21,8 +21,9 @@ CI runs the [compatibility matrix](.github/workflows/compatibility.yml) weekly: 
 
 | Gitea | Status | Notes |
 |---|---|---|
+| 1.26 | ✅ | 30/30 — baseline version the docs were calibrated on |
 | 1.25 | ✅ | 30/30 |
-| 1.24 | ✅ | 30/30 — baseline version the docs were calibrated on |
+| 1.24 | ✅ | 30/30 — Actions endpoints partially missing; see `gitea-actions/KNOWN_ISSUES.md` |
 | 1.23 | ✅ | 28/30 — `search?sort=created` not available, intentionally skipped |
 | 1.22 | ✅ | 27/30 — same as 1.23 plus one extra search-sort skip |
 | 1.21 | ✅ | 27/30 |
@@ -109,14 +110,13 @@ Once installed, the agent picks the right skill based on what you ask. Destructi
 4. **Self-hosted by default.** TLS, reverse proxy, disabled modules are first-class concerns.
 5. **Security guardrails.** Tokens never echoed; destructive ops always confirmed; Web UI fallback when API is missing.
 
-## Limitations / known gaps in Gitea 1.24.6
+## Limitations / known gaps in Gitea 1.26.4
 
 These come from the Gitea API itself, not the skills:
 
-- No `GET /actions/runs/{id}` (single-run details endpoint)
-- No `list jobs` API; you must already know the `job_id` to fetch logs
-- No `cancel run` or `rerun run` endpoint
-- These are documented in `gitea-actions/SKILL.md` with "open the Web UI" fallbacks
+- No `POST /actions/runs/{run}/cancel` — cancel a run via the Web UI only
+
+Capabilities that were missing on 1.24.x but available since 1.25+ (run details, list jobs, rerun, job logs) are documented in `gitea-actions/SKILL.md` and `gitea-actions/KNOWN_ISSUES.md`.
 
 ## Contributing
 
@@ -126,7 +126,7 @@ Issues and PRs welcome. The skill-creator workflow we used:
 3. Run live smoke tests against a real Gitea instance
 4. Iterate until both pass
 
-If you find an endpoint that behaves differently on a Gitea version other than 1.24.6, please open an issue with:
+If you find an endpoint that behaves differently on a Gitea version other than 1.26.4, please open an issue with:
 - Gitea version (`/api/v1/version`)
 - Endpoint path
 - Observed vs expected behavior

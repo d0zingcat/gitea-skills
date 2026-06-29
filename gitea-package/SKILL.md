@@ -8,7 +8,7 @@ description: "Gitea Packages 注册中心：列出包（每个版本一条）、
 
 **开始前必读 [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md)**：认证、curl 模板、错误处理。
 
-下面 curl 都省略 `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`。本文以 **Gitea 1.24.6** 的 OpenAPI 为准。
+下面 curl 都省略 `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`。本文以 **Gitea 1.26.4** 的 OpenAPI 为准。
 
 ## 关键概念
 
