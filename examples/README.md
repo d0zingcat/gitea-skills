@@ -16,11 +16,11 @@ These are illustrative — your actual agent will adapt to the user's `GITEA_HOS
 
 ## Conventions
 
-Every example assumes the user has already configured:
+Every example assumes the user has already configured credentials via `bash setup.sh` or environment variables:
 
 ```bash
 export GITEA_HOST="https://git.example.com"
-export GITEA_ACCESS_TOKEN="gta_xxxxxxxxxxxxxxxxxxxxxxxx"
+export GITEA_ACCESS_TOKEN="<your_pat>"   # 勿在文档或命令历史里使用真实 token
 ```
 
-If your token isn't set, the agent should ask or instruct the user to follow the setup in [gitea-shared/SKILL.md](../gitea-shared/SKILL.md).
+If your token isn't set, the agent should ask or instruct the user to run `bash setup.sh` (see [gitea-shared/SKILL.md](../gitea-shared/SKILL.md)).
