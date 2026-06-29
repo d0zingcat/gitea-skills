@@ -9,7 +9,8 @@
 ## Why this needs care
 
 - `dispatch_workflow` is a **real CI execution** (real cost, real side effects).
-- Gitea 1.24.6 has **no list-jobs API**, so polling status has to use `/actions/tasks` (the list of runs).
+- On Gitea **1.25+** (including 1.26.4), poll run status via `GET /actions/runs/{run_id}` and check `status=completed` + `conclusion`.
+- On Gitea **1.24.x**, fallback to `/actions/tasks` (single `status` field, no list-jobs API).
 - The endpoint name is `dispatches` (plural) on 1.21+. Old singular `dispatch` is gone.
 
 ## Expected flow
@@ -40,7 +41,7 @@ Empty body on success.
 sleep 3   # give Gitea a moment to materialize the run
 NEW_RUN=$(curl -fsSL \
   -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
-  "${GITEA_HOST}/api/v1/repos/team-a/web/actions/tasks?page=1&limit=10" \
+  "${GITEA_HOST}/api/v1/repos/team-a/web/actions/runs?page=1&limit=10" \
   | jq '.workflow_runs | map(select(.event=="workflow_dispatch")) | .[0]')
 
 RUN_ID=$(echo "$NEW_RUN" | jq -r '.id')
@@ -49,28 +50,40 @@ echo "Triggered run #${RUN_NUMBER} (id=${RUN_ID})"
 echo "Web UI: ${GITEA_HOST}/team-a/web/actions/runs/${RUN_NUMBER}"
 ```
 
+If `/actions/runs` returns 404 (Gitea < 1.25), replace the URL with `/actions/tasks`.
+
 ### 4. Poll until terminal state
 
 ```bash
 while true; do
-  STATUS=$(curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
-    "${GITEA_HOST}/api/v1/repos/team-a/web/actions/tasks?limit=20" \
-    | jq -r --arg id "$RUN_ID" '.workflow_runs[] | select(.id == ($id | tonumber)) | .status' | head -n1)
-  echo "[$(date +%H:%M:%S)] status=${STATUS}"
-  case "$STATUS" in
-    success|failure|cancelled|skipped) break ;;
-  esac
+  INFO=$(curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
+    "${GITEA_HOST}/api/v1/repos/team-a/web/actions/runs/${RUN_ID}" \
+    | jq '{status, conclusion}')
+  STATUS=$(echo "$INFO" | jq -r '.status')
+  CONCLUSION=$(echo "$INFO" | jq -r '.conclusion // empty')
+  echo "[$(date +%H:%M:%S)] status=${STATUS} conclusion=${CONCLUSION}"
+  [ "$STATUS" = "completed" ] && break
   sleep 10
 done
 
-echo "Final: ${STATUS}"
+echo "Final: ${CONCLUSION}"
 ```
 
-### 5. On failure, surface artifacts (since job logs need a job_id we don't have)
+### 5. On failure, pull job logs
 
 ```bash
-if [ "$STATUS" = "failure" ]; then
-  echo "Web UI for logs: ${GITEA_HOST}/team-a/web/actions/runs/${RUN_NUMBER}"
+if [ "$CONCLUSION" = "failure" ]; then
+  JOB_ID=$(curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
+    "${GITEA_HOST}/api/v1/repos/team-a/web/actions/runs/${RUN_ID}/jobs" \
+    | jq -r '.jobs | map(select(.conclusion=="failure")) | .[0].id // .jobs[0].id')
+
+  if [ -n "$JOB_ID" ] && [ "$JOB_ID" != "null" ]; then
+    curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
+      -o failure.log \
+      "${GITEA_HOST}/api/v1/repos/team-a/web/actions/jobs/${JOB_ID}/logs"
+    echo "Saved job log to failure.log"
+  fi
+
   echo "Artifacts (if any):"
   curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
     "${GITEA_HOST}/api/v1/repos/team-a/web/actions/runs/${RUN_ID}/artifacts" \
@@ -78,11 +91,10 @@ if [ "$STATUS" = "failure" ]; then
 fi
 ```
 
-If your CI uploads a `failure-context.zip` artifact, it can be fetched via `archive_download_url` — this is the recommended pattern given the missing job-log API.
-
 ## Variations
 
 - "Just trigger it, don't wait" -> stop after step 2.
 - "Trigger but only if no other run is in progress" -> before step 2, check
-  `tasks?status=in_progress` and bail if non-empty.
+  `actions/runs?status=in_progress` and bail if non-empty.
 - "Disable this workflow temporarily" -> `PUT /actions/workflows/deploy.yml/disable` (returns 204).
+- "Rerun the failed jobs" -> `POST /actions/runs/${RUN_ID}/rerun-failed-jobs` (confirm with user first).

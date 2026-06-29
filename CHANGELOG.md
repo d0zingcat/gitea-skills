@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] – 2026-06-29
+
+### Changed
+
+- Recalibrated all skills against Gitea **1.26.4** OpenAPI (`gitea.quantpi.cn`).
+- **`gitea-actions`**: major rewrite for 1.25+ Actions API:
+  - Primary run listing via `GET /actions/runs` (replaces `/actions/tasks` as default).
+  - Single run detail (`GET /actions/runs/{run}`), delete run, rerun run/failed-jobs/single-job.
+  - List jobs (`GET /actions/runs/{run}/jobs`, `GET /actions/jobs`), job detail, job logs with correct `job_id`.
+  - Document `status` + `conclusion` dual-field model on runs/jobs.
+  - Keep `/actions/tasks` documented as 1.24.x fallback.
+- **`gitea-shared`**: updated version compatibility matrix for 1.25+/1.26.4.
+- CI compatibility matrix extended to Gitea **1.26**.
+- Smoke tests probe `/actions/runs` in addition to `/actions/tasks`.
+
+### Known limitations (Gitea 1.26.4 API)
+
+- No `POST /actions/runs/{run}/cancel` — cancel via Web UI only.
+
+### Fixed (relative to 1.24.6 baseline)
+
+- Job logs, list jobs, run detail, and rerun endpoints are now documented and usable on 1.25+.
+
+[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/d0zingcat/gitea-skills/compare/v0.0.1...v0.1.0
+
 ## [0.0.1] – 2026-05-15
 
 ### Added
@@ -56,5 +82,4 @@ These are absent from the upstream API itself, not the skills:
 - No cancel-run or rerun-run endpoint.
 - All documented in `gitea-actions/SKILL.md` with Web UI fallbacks.
 
-[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.0.1...HEAD
 [0.0.1]: https://github.com/d0zingcat/gitea-skills/releases/tag/v0.0.1

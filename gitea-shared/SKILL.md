@@ -1,6 +1,6 @@
 ---
 name: gitea-shared
-version: 0.0.1
+version: 0.1.0
 description: "Gitea REST API 共享基础（面向自部署 Gitea 实例）：host 与 token 配置、curl 调用约定、自签名/内网 TLS、分页、错误处理、版本兼容、安全规则。所有 gitea-* skill 在调用 API 前都依赖这里的约定。当用户首次需要操作自部署 Gitea、配置 GITEA_HOST/GITEA_ACCESS_TOKEN、遇到 SSL 证书错误、401/403/404、需要批量分页、或要写一段 curl 调 Gitea 时使用。"
 ---
 
@@ -326,15 +326,17 @@ curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
 
 ## 版本兼容
 
-不同 Gitea 版本的 endpoint 略有差异。优先看 `/api/v1/version` 输出确认版本，再决定走哪条路径。
+不同 Gitea 版本的 endpoint 略有差异。优先看 `/api/v1/version` 输出确认版本，再决定走哪条路径。本文档以 **Gitea 1.26.4** 为校准基准。
 
 | 现象 | 可能原因 | 处理 |
 |------|----------|------|
 | `actions/workflows/{id}/dispatches` 返回 405 | Gitea < 1.21 用单数 `/dispatch` | 1.21+ 一律用复数 `/dispatches` |
-| `/actions/runs` 返回 404 | 1.24.x 列 runs 的实际路径是 `/actions/tasks` | 用 `/actions/tasks`（响应字段仍是 `workflow_runs`） |
-| `/actions/runs/{id}` 返回 404 | 1.24.x swagger 没有单 run 详情 endpoint | 在 list 里 jq 过滤；或引导用户到 Web UI |
-| `/actions/runs/{id}/cancel` 或 `/rerun` 返回 404 | 1.24.x 没暴露这两个 API | 引导用户到 Web UI 操作 |
-| `/actions/runs/{id}/jobs` 返回 404 | 1.24.x 没有 list jobs API | 直接 `actions/jobs/{job_id}/logs`（需提前知道 job_id） |
+| `/actions/runs` 返回 404 | Gitea < 1.25 未注册该路径 | fallback 到 `/actions/tasks`（响应字段仍是 `workflow_runs`） |
+| run `status` 是 `completed` 而非 `success` | 1.25+ 采用 `status` + `conclusion` 双字段 | 终态看 `conclusion`（`success`/`failure`/`cancelled`/`skipped`） |
+| `/actions/tasks` 的 `status` 直接是 `success` | 遗留 `ActionTask` 模型 | 老路径轮询用单一 `status` 字段即可 |
+| `/actions/runs/{id}/jobs` 返回 404 | Gitea < 1.25 | 无法 API 列 jobs；job logs 在 1.24.x 上常不可用（见 `gitea-actions/KNOWN_ISSUES.md`） |
+| `/actions/runs/{id}/cancel` 返回 404 | 1.26.4 仍无 cancel API | 引导用户到 Web UI 取消 |
+| `/actions/runs/{id}/rerun` 返回 404 | Gitea < 1.25 | 引导用户到 Web UI 重跑 |
 | 字段名 `pre-release` vs `prerelease` | 不同版本不一致 | 创建 release 时 body 用 `prerelease`，list 的 query 参数用 `pre-release` |
 | 返回字段缺少某些键 | 老版本字段还没引入 | jq 用 `.field?` 容错 |
 

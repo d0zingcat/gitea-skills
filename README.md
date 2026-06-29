@@ -3,7 +3,7 @@
 [![lint](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml)
 [![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Gitea 1.21–1.25](https://img.shields.io/badge/Gitea-1.21%E2%80%931.25-success)](#%E5%85%BC%E5%AE%B9%E6%80%A7)
+[![Gitea 1.21–1.26](https://img.shields.io/badge/Gitea-1.21%E2%80%931.26-success)](#%E5%85%BC%E5%AE%B9%E6%80%A7)
 
 > 中文 (you are here) · [English](README.en.md)
 
@@ -21,8 +21,9 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 
 | Gitea | 状态 | 备注 |
 |---|---|---|
+| 1.26 | ✅ | 全部 30 项通过（文档校准的基准版本） |
 | 1.25 | ✅ | 全部 30 项通过 |
-| 1.24 | ✅ | 全部 30 项通过（也是文档校准的基准版本） |
+| 1.24 | ✅ | 全部 30 项通过；Actions 部分 endpoint 缺失，见 `gitea-actions/KNOWN_ISSUES.md` |
 | 1.23 | ✅ | 28 项通过；search `sort=created` 在该版本不可用，已跳过 |
 | 1.22 | ✅ | 27 项通过；同 1.23 + 一项 search sort 兼容跳过 |
 | 1.21 | ✅ | 27 项通过 |
@@ -109,15 +110,13 @@ bash setup.sh
 4. **自部署优先。** TLS、反代、模块开关都是一等公民。
 5. **安全护栏。** token 不回显、破坏性操作必确认、API 缺失时给出 Web UI 退路。
 
-## Gitea 1.24.6 的已知 API 缺口
+## Gitea 1.26.4 的已知 API 缺口
 
 下列限制来自 Gitea 上游 API 本身，不是 skill 的锅：
 
-- 没有 `GET /actions/runs/{id}`（单 run 详情）
-- 没有 list-jobs API；要拉 job log 必须从外部（webhook 回调、Web UI）拿到 `job_id`
-- 没有 cancel-run / rerun-run
+- 没有 `POST /actions/runs/{run}/cancel`（取消 run 只能走 Web UI）
 
-`gitea-actions/SKILL.md` 给出"打开 Web UI"的退路。
+1.25+ 已修复、1.24.x 曾缺失的能力（runs 详情、list jobs、rerun、job logs）见 `gitea-actions/SKILL.md` 和 `gitea-actions/KNOWN_ISSUES.md`。
 
 ## 贡献
 
@@ -128,7 +127,7 @@ bash setup.sh
 3. 在真实 Gitea 实例上跑只读冒烟
 4. 两边都过才合入
 
-如果你在某个非 1.24.6 的 Gitea 版本上发现行为不一样，请提 issue 附：
+如果你在某个非 1.26.4 的 Gitea 版本上发现行为不一样，请提 issue 附：
 
 - Gitea 版本（`/api/v1/version` 输出）
 - 出问题的 endpoint 路径

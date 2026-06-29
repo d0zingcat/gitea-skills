@@ -273,7 +273,7 @@ case "$status" in
   *)   FAIL=$((FAIL+1)); ERRORS+=("workflows unexpected $status"); red "  FAIL  workflows endpoint unexpected HTTP $status";;
 esac
 
-# Tasks list (alias for runs in 1.21+)
+# Tasks list (legacy alias, still present on 1.24+)
 status=$(curl -sSL -o /dev/null -w '%{http_code}' \
   -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
   "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/actions/tasks")
@@ -281,6 +281,16 @@ case "$status" in
   200) PASS=$((PASS+1)); green "  PASS  tasks endpoint reachable (HTTP 200)";;
   404) yellow "  SKIP  tasks endpoint not enabled (HTTP 404)"; SKIP=$((SKIP+1));;
   *)   FAIL=$((FAIL+1)); ERRORS+=("tasks unexpected $status"); red "  FAIL  tasks endpoint unexpected HTTP $status";;
+esac
+
+# Runs list (canonical on 1.25+)
+status=$(curl -sSL -o /dev/null -w '%{http_code}' \
+  -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
+  "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/actions/runs")
+case "$status" in
+  200) PASS=$((PASS+1)); green "  PASS  runs endpoint reachable (HTTP 200)";;
+  404) yellow "  SKIP  runs endpoint not available on this version (HTTP 404)"; SKIP=$((SKIP+1));;
+  *)   FAIL=$((FAIL+1)); ERRORS+=("runs unexpected $status"); red "  FAIL  runs endpoint unexpected HTTP $status";;
 esac
 
 echo
