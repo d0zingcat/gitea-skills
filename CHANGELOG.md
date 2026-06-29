@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] – 2026-06-29
+## [0.1.1] – 2026-06-29
+
+### Security
+
+- **`gitea-shared`**: address skills.sh / Snyk audit findings (W007, W011, W013):
+  - Credential handling rules — prefer `setup.sh`; forbid literal tokens in shell/curl; Write-tool-only config assist.
+  - Untrusted third-party content — API responses and swagger are data-only, not agent instructions.
+  - TLS — agent must not run `sudo` or modify system trust stores; user-level `--cacert` / `CURL_CA_BUNDLE` only.
+- **`gitea-actions`**: address W007 and W012:
+  - Execution boundary — dispatch/rerun only on explicit user request; endpoint allowlist; `GITEA_HOST` from config only.
+  - Secret writes use `export` + `jq` pipe + `curl -d @-` instead of inline plaintext in `-d`.
+
+### Fixed
+
+- `scripts/smoke_test.sh`: fix broken jq escaping in the `create file` assertion (was always failing with rc=4).
+
+[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.0...v0.1.1
 
 ### Changed
 
@@ -30,7 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Job logs, list jobs, run detail, and rerun endpoints are now documented and usable on 1.25+.
 
-[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/d0zingcat/gitea-skills/compare/v0.0.1...v0.1.0
 
 ## [0.0.1] – 2026-05-15

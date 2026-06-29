@@ -148,8 +148,8 @@ assert "git/trees uses per_page" "api '${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/
   | jq -e '.tree | length <= 1'"
 
 CONTENT=$(printf "hello\n" | base64)
-assert "create file" "api -X POST -H 'Content-Type: application/json' \
-  -d \"\$(jq -n --arg c '$CONTENT' '{branch:\\\"main\\\",message:\\\"add hello\\\",content:\\\$c}')\" \
+assert "create file" "jq -n --arg c '${CONTENT}' '{branch:\"main\",message:\"add hello\",content:\$c}' \
+  | api -X POST -H 'Content-Type: application/json' -d @- \
   '${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/contents/hello.txt' | jq -e .content.sha"
 
 echo
