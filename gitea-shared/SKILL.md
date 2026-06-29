@@ -1,6 +1,6 @@
 ---
 name: gitea-shared
-version: 0.1.1
+version: 0.1.2
 description: "Gitea REST API 共享基础（面向自部署 Gitea 实例）：host 与 token 配置、curl 调用约定、自签名/内网 TLS、分页、错误处理、版本兼容、安全规则。所有 gitea-* skill 在调用 API 前都依赖这里的约定。当用户首次需要操作自部署 Gitea、配置 GITEA_HOST/GITEA_ACCESS_TOKEN、遇到 SSL 证书错误、401/403/404、需要批量分页、或要写一段 curl 调 Gitea 时使用。"
 ---
 
@@ -20,51 +20,64 @@ description: "Gitea REST API 共享基础（面向自部署 Gitea 实例）：ho
 
 通过 `~/.config/gitea-skills/config` 文件或环境变量提供 `GITEA_HOST` 与 `GITEA_ACCESS_TOKEN`。
 
+### 安装方式与配置路径
+
+| 安装方式 | 本地是否有 `setup.sh` | 推荐配置方式 |
+|----------|----------------------|--------------|
+| `npx skills add d0zingcat/gitea-skills`（常见） | **否**（只 symlink skill 目录） | 用户把 host + PAT 发给 agent → agent 用 **Write 工具**写 config |
+| `git clone` 后手动 symlink | **是** | 可运行 `bash setup.sh`，或由 agent 代写 config |
+| 用户自行 export 环境变量 | 无关 | `export GITEA_HOST=...` / `GITEA_ACCESS_TOKEN=...`（direnv、shell rc、CI） |
+
+**`npx skills add` 不会把仓库里的 `setup.sh` 装到用户机器上**，因此文档和 agent 行为都不得默认让用户「去跑 `bash setup.sh`」——除非确认用户已克隆完整仓库。
+
 ### 凭证处理规则（审计要求）
 
 **Agent 不得**在 shell 命令参数、curl `-d` body、终端输出、聊天记录或临时脚本中写入、回显或字面量粘贴真实 token / secret / PAT。
 
 允许的方式（按优先级）：
 
-1. **首选**：引导用户在本地运行交互式安装脚本（token 隐藏输入，不经过 agent shell 历史）：
-   ```bash
-   bash setup.sh
-   ```
-2. **备选**：用户自行 `export GITEA_HOST=...` 与 `export GITEA_ACCESS_TOKEN=...`（direnv、shell rc、CI secret store）
-3. **Agent 协助写配置文件**（仅当用户明确授权且无法运行 `setup.sh`）：用编辑器的 **Write 工具**直接写 `~/.config/gitea-skills/config`（目录 `chmod 700`，文件 `chmod 600`），从用户消息读取 host/token。**禁止**用 `echo`、`cat <<EOF`、`curl -H "Authorization: token ..."` 把 token 放进可记录的 shell 命令
+1. **首选（`npx skills add` 及大多数场景）**：向用户索取 `GITEA_HOST` 与 PAT → 用编辑器的 **Write 工具**写 `~/.config/gitea-skills/config`（先 `mkdir -p` 且目录 `chmod 700`，文件 `chmod 600`），从用户消息读取 host/token。**禁止**用 `echo`、`cat <<EOF`、`curl -H "Authorization: token ..."` 把 token 放进可记录的 shell 命令
+2. **备选**：用户自行 `export GITEA_HOST=...` 与 `export GITEA_ACCESS_TOKEN=...`
+3. **可选（仅当用户已克隆完整仓库、本地存在 `setup.sh` 时）**：引导用户本地运行 `bash setup.sh`（交互式隐藏输入，token 不经过聊天记录）
 
 验证连通性时，token **只能**通过 `source` 已写好的 config 或已 export 的 `${GITEA_ACCESS_TOKEN}` 使用。
 
 ### 首次配置
 
 当检测到配置缺失时，agent 应：
-1. 说明需要 `GITEA_HOST` 与 PAT（在 Gitea `Settings → Applications → Generate New Token` 生成）
-2. **优先**请用户本地运行 `bash setup.sh`
-3. 若用户授权 agent 代写配置，用 Write 工具写入（格式见下方），然后 `source` config 再调 `/api/v1/version` 与 `/api/v1/user` 验证
-4. **不得**在验证用的 curl 命令里字面量粘贴 token
+1. 说明需要 `GITEA_HOST` 与 PAT（Personal Access Token）
+2. **向用户索取**实例地址与 token（用户可在聊天中直接提供；勿要求用户自己去执行本地不存在的脚本）
+3. **提醒生成 token**：在 Gitea Web 界面 `Settings → Applications → Generate New Token`，或直接打开 **`{GITEA_HOST}/user/settings/applications`**（`{GITEA_HOST}` 为实例根地址，不含尾部 `/`）。若用户尚未提供 host，先询问实例地址再给出该链接
+4. 收到 host + token 后，用 **Write 工具**写入 `~/.config/gitea-skills/config`（格式见下方），然后 `source` config 再调 `/api/v1/version` 与 `/api/v1/user` 验证
+5. **不得**在验证用的 curl 命令里字面量粘贴 token
+6. 仅当确认用户本地有完整仓库时，才可额外建议 `bash setup.sh` 作为替代
 
-配置文件格式（由 `setup.sh` 或 Write 工具生成，勿在 shell 里 echo token）：
+**Agent 写配置步骤**（Write 工具，勿用 shell 回显 token）：
+
+1. 确保目录存在：`~/.config/gitea-skills/`（权限 `700`）
+2. Write 写入 `~/.config/gitea-skills/config`（权限 `600`），内容见下方格式，把用户提供的 host（去尾部 `/`）和 token 填入
+3. Shell 中仅 `source` 该文件后做连通性验证；全程不 echo/打印 token
+
+配置文件格式（由 Write 工具或 `setup.sh` 生成，勿在 shell 里 echo token）：
 
 ```bash
 # gitea-skills config — do not commit
 : "${GITEA_HOST:=https://gitea.example.com}"
-: "${GITEA_ACCESS_TOKEN:=<由 setup.sh 或 Write 工具写入，勿出现在 shell 命令行>}"
+: "${GITEA_ACCESS_TOKEN:=<由 Write 工具或 setup.sh 写入，勿出现在 shell 命令行>}"
 export GITEA_HOST GITEA_ACCESS_TOKEN
 ```
 
 ### 更新 token
 
-请用户再次运行 `bash setup.sh`；或用户授权后用 Write 工具覆盖配置文件。
+请用户提供新 PAT，agent 用 **Write 工具**覆盖 `~/.config/gitea-skills/config`；或用户自行 export。仅当本地有 `setup.sh` 时可建议 `bash setup.sh`。
 
 ### 删除配置
 
-```bash
-bash setup.sh --uninstall
-```
+删除 `~/.config/gitea-skills/config`（及空目录）。若用户克隆了仓库，也可 `bash setup.sh --uninstall`。
 
 ### PAT scope 说明
 
-Gitea 1.20+ 走细粒度 scope（`read:repository` / `write:repository` / `read:issue` / `write:issue` / `read:user` / `read:organization` / `write:organization` / `read:package` / `write:package` 等）；Gitea 1.19 及以下是粗粒度 scope（`repo`、`admin:org` 等）。按用户实例版本在 Web 界面 `Settings → Applications → Generate New Token` 勾选。
+Gitea 1.20+ 走细粒度 scope（`read:repository` / `write:repository` / `read:issue` / `write:issue` / `read:user` / `read:organization` / `write:organization` / `read:package` / `write:package` 等）；Gitea 1.19 及以下是粗粒度 scope（`repo`、`admin:org` 等）。按用户实例版本在 **`{GITEA_HOST}/user/settings/applications`**（或 `Settings → Applications → Generate New Token`）勾选。
 
 ## TLS / 网络（自部署常见问题）
 
@@ -120,12 +133,16 @@ export CURL_CA_BUNDLE="$HOME/.config/internal-ca.crt"
 _cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
 [ -f "$_cfg" ] && . "$_cfg"
 if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
-  echo "ERROR: GITEA_HOST 或 GITEA_ACCESS_TOKEN 未设置。请先运行: bash setup.sh" >&2
+  echo "ERROR: GITEA_HOST 或 GITEA_ACCESS_TOKEN 未设置。" >&2
+  echo "请向 agent 提供实例地址与 PAT，由 agent 写入 ~/.config/gitea-skills/config" >&2
+  if [ -n "${GITEA_HOST:-}" ]; then
+    echo "生成 token: ${GITEA_HOST}/user/settings/applications" >&2
+  fi
   exit 1
 fi
 ```
 
-如果 config 文件不存在且 env 也没有，上面的片段会直接报错。**agent 看到这个错误时应当停止当前操作，按上方「配置」段完成首次配置**（优先 `bash setup.sh`；代写配置仅用 Write 工具，见「凭证处理规则」）。
+如果 config 文件不存在且 env 也没有，上面的片段会直接报错。**agent 看到这个错误时应当停止当前操作**：向用户索取 `GITEA_HOST` 与 PAT，用 **Write 工具**写入 config（见上方「配置」段），`source` 后验证；若已知 `GITEA_HOST`，一并给出 **`{GITEA_HOST}/user/settings/applications`** 链接；**不要**默认让用户执行 `bash setup.sh`（`npx skills add` 安装时本地通常没有该脚本）。
 
 之后紧跟 curl 命令。完整示例：
 
@@ -133,7 +150,11 @@ fi
 _cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
 [ -f "$_cfg" ] && . "$_cfg"
 if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
-  echo "ERROR: GITEA_HOST 或 GITEA_ACCESS_TOKEN 未设置。请先运行: bash setup.sh" >&2
+  echo "ERROR: GITEA_HOST 或 GITEA_ACCESS_TOKEN 未设置。" >&2
+  echo "请向 agent 提供实例地址与 PAT，由 agent 写入 ~/.config/gitea-skills/config" >&2
+  if [ -n "${GITEA_HOST:-}" ]; then
+    echo "生成 token: ${GITEA_HOST}/user/settings/applications" >&2
+  fi
   exit 1
 fi
 
@@ -231,8 +252,8 @@ curl -fsSLi -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
 | **SSL/TLS 错误**（`curl: (60)` / `(35)` / `(77)`） | 证书不被信任 | 见上方 "TLS / 网络" 段，先 `--cacert`，最后才 `-k` 且必须征得用户同意 |
 | **`Could not resolve host`**（`curl: (6)`） | DNS 解析失败 | 自部署用了内网域名时，确认在内网或 VPN 已连 |
 | **`Connection refused`**（`curl: (7)`） | 端口不通 | 确认 `GITEA_HOST` 端口（默认 3000，反代后通常 80/443） |
-| 401 | token 无效或过期 | 提示用户检查 `GITEA_ACCESS_TOKEN` |
-| 403 | scope 不足或无权限 | 提示用户给 PAT 加 scope（在 Gitea Settings → Applications 重新生成或编辑 token），或目标资源被组织/仓库权限拒绝 |
+| 401 | token 无效或过期 | 提示用户检查 `GITEA_ACCESS_TOKEN`；可在 `{GITEA_HOST}/user/settings/applications` 重新生成 |
+| 403 | scope 不足或无权限 | 提示用户在 `{GITEA_HOST}/user/settings/applications` 重新生成或编辑 token 以补充 scope，或目标资源被组织/仓库权限拒绝 |
 | 404 | 资源不存在 / 当前 token 看不见私有资源 / **该模块在实例上被禁用** | 私有仓库 404 等价于"没权限"；先确认 owner/repo 拼写，再确认 PAT scope 包含 `read:repository`；如果是 wiki/packages/actions 整段 404，可能是管理员 disabled（见下方 "模块开关"） |
 | 422 | 请求体校验失败 | 看 message 字段中的具体字段错误 |
 | 409 | 状态冲突 | 例如 PR 已合并、分支已存在等，幂等处理或读取再决策 |
