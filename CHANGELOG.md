@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`gitea-shared`** / **`setup.sh`**：配置缺失时提醒用户前往 `{GITEA_HOST}/user/settings/applications` 生成 PAT。
+- **`gitea-shared`** / **README**：`npx skills add` 不安装 `setup.sh`；默认配置流程改为用户向 agent 提供 host + PAT，由 agent 用 Write 工具写 `~/.config/gitea-skills/config`。`setup.sh` 仅作为克隆完整仓库后的可选项。
+
 ## [0.1.1] – 2026-06-29
 
 ### Security

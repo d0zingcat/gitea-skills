@@ -58,7 +58,9 @@ Total: 2,756 lines, all individual SKILL.md under 500 lines per skill-creator gu
 npx skills add d0zingcat/gitea-skills -g --all
 ```
 
-One command — auto clones and installs all 13 skills into the agent skills directory.
+One command symlinks all 13 skills into your agent skill directory. It does **not** install the repo's `setup.sh` locally.
+
+After installation, restart the agent so it picks up the new skills.
 
 ### Option B: manual clone + symlink
 
@@ -71,20 +73,31 @@ for d in ~/code/gitea-skills/gitea-*/; do
 done
 ```
 
-After installation, restart the agent so it picks up the new skills.
+After installation, restart the agent so it picks up the new skills. This keeps the full repo on disk, so you can optionally use `setup.sh`.
 
 ## Configuration
 
-After cloning, run once:
+### Option A (`npx skills add`, recommended)
+
+On first use, **send your Gitea host and PAT to the agent**. It writes `~/.config/gitea-skills/config` (`chmod 600`). Skills auto-`source` that file — **no manual export needed**.
+
+If you don't have a PAT yet, open `{your-gitea-host}/user/settings/applications` in your browser (e.g. `https://git.example.com/user/settings/applications`).
+
+- Update token: send a new PAT to the agent to overwrite the config
+- Remove config: delete `~/.config/gitea-skills/config`
+
+You can also `export GITEA_HOST=...` and `export GITEA_ACCESS_TOKEN=...` yourself (direnv, shell rc, etc.).
+
+### Option B (after cloning the repo, optional)
 
 ```bash
 bash setup.sh
 ```
 
-It interactively asks for your Gitea host and PAT, validates connectivity, and writes to `~/.config/gitea-skills/config` (chmod 600). Skills auto-load this file — **no manual export needed**.
+Interactive host + PAT entry with connectivity checks, writing to the same config path. You can still use the agent to write config instead.
 
-- Update token: `bash setup.sh` (run again to overwrite)
-- Remove config: `bash setup.sh --uninstall`
+- Update token: `bash setup.sh` or send a new PAT to the agent
+- Remove config: `bash setup.sh --uninstall` or delete the config file manually
 
 Full details (self-signed CA, reverse-proxy path prefix, scope selection) in [gitea-shared/SKILL.md](gitea-shared/SKILL.md).
 

@@ -58,7 +58,9 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 npx skills add d0zingcat/gitea-skills -g --all
 ```
 
-一行搞定，自动 clone + 全部 13 个 skill 一次性 symlink 到 agent skill 目录。
+一行搞定，自动把全部 13 个 skill symlink 到 agent skill 目录。**不会**把仓库里的 `setup.sh` 装到本地。
+
+安装完后重启 agent 让它扫到新 skill。
 
 ### 方式 B：手动克隆 + symlink
 
@@ -71,20 +73,31 @@ for d in ~/code/gitea-skills/gitea-*/; do
 done
 ```
 
-安装完后重启 agent 让它扫到新 skill。
+安装完后重启 agent 让它扫到新 skill。此方式本地保留完整仓库，可选用 `setup.sh` 交互配置。
 
 ## 配置
 
-克隆后运行一次：
+### 方式 A（`npx skills add`，推荐）
+
+首次使用 Gitea 相关功能时，**把实例地址和 PAT 发给 agent**，由 agent 写入 `~/.config/gitea-skills/config`（`chmod 600`）。之后 skill 自动 `source` 该文件，**无需手动 export**。
+
+尚无 PAT 时，在浏览器打开 `{你的 Gitea 地址}/user/settings/applications` 生成（例如 `https://git.example.com/user/settings/applications`）。
+
+- 更新 token：把新 PAT 发给 agent，由 agent 覆盖 config
+- 删除配置：删除 `~/.config/gitea-skills/config`
+
+也可自行 `export GITEA_HOST=...` 与 `export GITEA_ACCESS_TOKEN=...`（direnv、shell rc 等）。
+
+### 方式 B（克隆仓库后，可选）
 
 ```bash
 bash setup.sh
 ```
 
-交互式输入 Gitea host 和 PAT，验证连通性，写入 `~/.config/gitea-skills/config`（chmod 600）。之后 skill 自动读取，**无需手动 export 任何变量**。
+交互式输入 host 和 PAT，验证后写入同一 config 路径。也可继续用「发给 agent 代写」的方式。
 
-- 更新 token：`bash setup.sh`（再次运行覆盖）
-- 删除配置：`bash setup.sh --uninstall`
+- 更新 token：`bash setup.sh` 或发给 agent
+- 删除配置：`bash setup.sh --uninstall` 或手动删除 config 文件
 
 完整说明（自签 CA / 反向代理 path 前缀 / scope 选择）见 [gitea-shared/SKILL.md](gitea-shared/SKILL.md)。
 

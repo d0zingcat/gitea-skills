@@ -119,6 +119,9 @@ cmd_install() {
   fi
   HOST="${HOST%/}"   # strip trailing slash
 
+  echo
+  yellow "Generate a PAT at: ${HOST}/user/settings/applications"
+  echo
   prompt "Personal access token (input hidden)" TOKEN "" yes
   if [ -z "${TOKEN:-}" ]; then
     red "token is required"
