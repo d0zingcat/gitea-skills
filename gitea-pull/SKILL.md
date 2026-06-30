@@ -1,56 +1,56 @@
 ---
 name: gitea-pull
 version: 0.0.1
-description: "Gitea Pull Request 管理：创建/编辑/合并/关闭 PR、读 diff 与文件清单、Review 流程（创建 review、提交 pending review、批准/驳回/dismiss、添加内联评论）、reviewers 增减、用 base 更新 PR 分支。涵盖 /repos/{owner}/{repo}/pulls 系列 endpoint。当用户需要在 Gitea 上提 PR、合并 PR、走代码评审流程、回滚 review、查 PR 改动文件或 diff 时使用。"
+description: "Gitea Pull Request management: create/edit/merge/close PRs, read diff and file lists, review workflow (create review, submit pending review, approve/reject/dismiss, add inline comments), add/remove reviewers, update PR branch from base. Covers /repos/{owner}/{repo}/pulls REST endpoints. Use when the user needs to open PRs, merge PRs, run code review workflows, revert reviews, or inspect PR changed files or diffs on Gitea."
 ---
 
 # Gitea Pull Request
 
-**开始前必读 [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md)**：认证、curl 模板、错误处理、安全规则。
+**Read [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md) first:** authentication, curl templates, error handling, security rules.
 
-下面所有 curl 都省略 `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`。
+All curl commands below omit `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`.
 
-## 关键概念
+## Key Concepts
 
-- **PR number** 与 issue 共享一个仓库内序列。
-- PR 有两组 endpoint：
-  - issue 视角：`/repos/{owner}/{repo}/issues/{n}`（评论、标签、状态切换、assignees 走这条）
-  - PR 视角：`/repos/{owner}/{repo}/pulls/{n}`（diff、files、reviews、merge、reviewer、update branch 走这条）
-- **draft PR**：通过在 title 加 `WIP:` 前缀实现（gitea-mcp 暴露的 `draft` 参数本质是改 title）。
+- **PR number** shares a per-repository sequence with issues.
+- PRs have two endpoint groups:
+  - Issue perspective: `/repos/{owner}/{repo}/issues/{n}` (comments, labels, state changes, assignees)
+  - PR perspective: `/repos/{owner}/{repo}/pulls/{n}` (diff, files, reviews, merge, reviewers, update branch)
+- **Draft PR:** implemented by prefixing the title with `WIP:` (the `draft` parameter exposed by gitea-mcp essentially changes the title).
 
-## 列出 PR
+## List Pull Requests
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls?state=open&sort=recentupdate&page=1&limit=50" \
   | jq '[.[] | {number, title, state, head: .head.ref, base: .base.ref, user: .user.login, mergeable, merged}]'
 ```
 
-可选 query 参数：
+Optional query parameters:
 
-| 参数 | 含义 |
+| Parameter | Meaning |
 |------|------|
-| `state` | `open`（默认）/ `closed` / `all` |
-| `sort` | `oldest` / `recentupdate`（默认）/ `recentclose` / `leastupdate` / `mostcomment` / `leastcomment` / `priority` |
-| `milestone` | milestone ID |
-| `labels` | 逗号分隔 label ID |
-| `poster` | 创建者 username |
-| `base_branch` | 限定目标分支名 |
-| `page` / `limit` | 分页 |
+| `state` | `open` (default) / `closed` / `all` |
+| `sort` | `oldest` / `recentupdate` (default) / `recentclose` / `leastupdate` / `mostcomment` / `leastcomment` / `priority` |
+| `milestone` | Milestone ID |
+| `labels` | Comma-separated label IDs |
+| `poster` | Creator username |
+| `base_branch` | Filter by target branch name |
+| `page` / `limit` | Pagination |
 
-## PR 详情
+## PR Details
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}"
 ```
 
-精简：
+Condensed:
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}" \
   | jq '{number, title, state, body, mergeable, merged, head: {ref:.head.ref,sha:.head.sha}, base: .base.ref, user: .user.login}'
 ```
 
-## 创建 PR
+## Create Pull Request
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -67,25 +67,25 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls"
 ```
 
-字段说明（来自 swagger `CreatePullRequestOption`）：
+Field reference (from swagger `CreatePullRequestOption`):
 
-| 字段 | 必填 | 说明 |
+| Field | Required | Description |
 |------|------|------|
-| `title` | 是 | draft 时手动加 `WIP: ` 前缀 |
-| `body` | 否 | markdown |
-| `head` | 是 | source 分支；跨仓库写 `username:branch` |
-| `base` | 是 | target 分支 |
-| `assignee` | 否 | 单个 username |
-| `assignees` | 否 | username 数组 |
-| `labels` | 否 | label ID 数组 |
-| `milestone` | 否 | milestone ID |
-| `reviewers` | 否 | username 数组（创建时一并请求评审，省去后续 `requested_reviewers` 调用） |
-| `team_reviewers` | 否 | team slug 数组 |
-| `due_date` | 否 | ISO 8601 |
+| `title` | Yes | For draft PRs, manually prefix with `WIP: ` |
+| `body` | No | Markdown |
+| `head` | Yes | Source branch; cross-repo format: `username:branch` |
+| `base` | Yes | Target branch |
+| `assignee` | No | Single username |
+| `assignees` | No | Array of usernames |
+| `labels` | No | Array of label IDs |
+| `milestone` | No | Milestone ID |
+| `reviewers` | No | Array of usernames (request review at creation time; avoids a separate `requested_reviewers` call) |
+| `team_reviewers` | No | Array of team slugs |
+| `due_date` | No | ISO 8601 |
 
-跨仓库 PR 的 `head` 写法：`fork-owner:branch-name`。
+Cross-repo PR `head` format: `fork-owner:branch-name`.
 
-## 编辑 PR
+## Edit Pull Request
 
 ```bash
 curl -fsSL -X PATCH -H "Content-Type: application/json" \
@@ -93,67 +93,67 @@ curl -fsSL -X PATCH -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}"
 ```
 
-可改字段：`title`、`body`、`base`、`assignees`、`milestone`、`labels`、`state`（`open` 重开 / `closed` 关闭）、`due_date`、`unset_due_date`、`allow_maintainer_edit`。
+Editable fields: `title`, `body`, `base`, `assignees`, `milestone`, `labels`, `state` (`open` to reopen / `closed` to close), `due_date`, `unset_due_date`, `allow_maintainer_edit`.
 
-切换 draft 状态：把 `title` 改为带或不带 `WIP: ` 前缀。
+Toggle draft status: add or remove the `WIP: ` prefix in `title`.
 
-## 关闭 / 重开 PR
+## Close / Reopen Pull Request
 
 ```bash
-# 关闭
+# Close
 curl -fsSL -X PATCH -H "Content-Type: application/json" \
   -d '{"state":"closed"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}"
-# 重开
+# Reopen
 curl -fsSL -X PATCH -H "Content-Type: application/json" \
   -d '{"state":"open"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}"
 ```
 
-## Diff 与文件清单
+## Diff and File List
 
-### 拉取 diff（文本）
+### Fetch Diff (Text)
 
 ```bash
 curl -fsSL -H "Accept: text/plain" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}.diff"
 ```
 
-`.patch` 后缀返回 mbox 格式。
+The `.patch` suffix returns mbox format.
 
-### 改动文件清单
+### Changed Files List
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/files?page=1&limit=50" \
   | jq '[.[] | {filename, status, additions, deletions, changes}]'
 ```
 
-可选 query：
+Optional query:
 
-| 参数 | 含义 |
+| Parameter | Meaning |
 |------|------|
-| `whitespace` | `ignore-all` / `ignore-change` / `ignore-eol` / `show-all`（diff 算行差时怎么处理空白） |
-| `skip-to` | 跳到指定文件路径之后才开始返回（大 PR 分批拉文件用） |
-| `page` / `limit` | 分页 |
+| `whitespace` | `ignore-all` / `ignore-change` / `ignore-eol` / `show-all` (how whitespace is handled when computing line diffs) |
+| `skip-to` | Start returning files after the given file path (batch large PRs) |
+| `page` / `limit` | Pagination |
 
-### PR commits 列表
+### PR Commits List
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/commits?page=1&limit=50" \
   | jq '[.[] | {sha: .sha[0:8], msg: (.commit.message | split("\n")[0]), author: .commit.author.name}]'
 ```
 
-可选 query：
+Optional query:
 
-| 参数 | 含义 |
+| Parameter | Meaning |
 |------|------|
-| `verification` | `true` 包含每个 commit 的 GPG 签名信息 |
-| `files` | `true` 每个 commit 的 changed files 也包含进来 |
-| `page` / `limit` | 分页 |
+| `verification` | `true` includes GPG signature info per commit |
+| `files` | `true` includes changed files per commit |
+| `page` / `limit` | Pagination |
 
-## 合并 PR
+## Merge Pull Request
 
-**这是高风险操作，合并前确认用户意图。**
+**High-risk operation — confirm user intent before merging.**
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -166,30 +166,30 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/merge"
 ```
 
-**注意大小写**：merge body 里 `Do`、`MergeTitleField`、`MergeMessageField`、`MergeCommitID` 是首字母大写（历史遗留）；`delete_branch_after_merge`、`force_merge`、`head_commit_id`、`merge_when_checks_succeed` 是 snake_case。这是 swagger 真实定义，照抄即可。
+**Note casing:** in the merge body, `Do`, `MergeTitleField`, `MergeMessageField`, `MergeCommitID` are PascalCase (legacy); `delete_branch_after_merge`, `force_merge`, `head_commit_id`, `merge_when_checks_succeed` are snake_case. This matches the swagger definition — copy as-is.
 
-`Do` 取值（来自 swagger `MergePullRequestForm.Do.enum`）：
+`Do` values (from swagger `MergePullRequestForm.Do.enum`):
 
-| 值 | 含义 |
+| Value | Meaning |
 |------|------|
-| `merge` | 普通 merge commit |
-| `rebase` | rebase 后 fast-forward |
-| `rebase-merge` | rebase 后再做一个 merge commit |
-| `squash` | squash 后单 commit |
-| `fast-forward-only` | 仅 fast-forward，base 落后于 head 才能成功，否则 422 |
-| `manually-merged` | 标记为已手动合并（须配合 `MergeCommitID`） |
+| `merge` | Standard merge commit |
+| `rebase` | Rebase then fast-forward |
+| `rebase-merge` | Rebase then create a merge commit |
+| `squash` | Squash into a single commit |
+| `fast-forward-only` | Fast-forward only; succeeds only when base is behind head, otherwise 422 |
+| `manually-merged` | Mark as manually merged (requires `MergeCommitID`) |
 
-其他字段：
+Other fields:
 
-| 字段 | 说明 |
+| Field | Description |
 |------|------|
-| `MergeCommitID` | 配合 `manually-merged`，告诉 Gitea 已经手动合到哪个 commit |
-| `delete_branch_after_merge` | 合并后删 head 分支 |
-| `force_merge` | 即使检查未通过也合并 |
-| `head_commit_id` | 期望的 head SHA，若实际 head 不匹配则 409 |
-| `merge_when_checks_succeed` | CI 通过后自动合并（auto-merge） |
+| `MergeCommitID` | Used with `manually-merged`; tells Gitea which commit was manually merged |
+| `delete_branch_after_merge` | Delete head branch after merge |
+| `force_merge` | Merge even if checks have not passed |
+| `head_commit_id` | Expected head SHA; returns 409 if actual head does not match |
+| `merge_when_checks_succeed` | Auto-merge when CI passes |
 
-### 检查 PR 是否已合并
+### Check Whether PR Is Merged
 
 ```bash
 # 204 = merged, 404 = not merged
@@ -198,25 +198,25 @@ curl -sSL -o /dev/null -w '%{http_code}\n' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/merge"
 ```
 
-### 取消已 schedule 的 auto-merge
+### Cancel Scheduled Auto-Merge
 
 ```bash
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/merge"
 ```
 
-## update_branch（让 PR 分支跟上 base）
+## update_branch (Sync PR Branch with Base)
 
 ```bash
 curl -fsSL -X POST \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/update"
 ```
 
-可加 `?style=merge` 或 `?style=rebase`。默认 merge。
+Optional `?style=merge` or `?style=rebase`. Default is merge.
 
 ## Reviewers
 
-### 添加 reviewer
+### Add Reviewers
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -224,7 +224,7 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/requested_reviewers"
 ```
 
-### 移除 reviewer
+### Remove Reviewers
 
 ```bash
 curl -fsSL -X DELETE -H "Content-Type: application/json" \
@@ -234,31 +234,31 @@ curl -fsSL -X DELETE -H "Content-Type: application/json" \
 
 ## Review
 
-Review 是一组评审动作的容器，可附带内联评论。一个 review 有四种状态：`PENDING`、`APPROVED`、`REQUEST_CHANGES`、`COMMENT`。
+A review is a container for review actions and can include inline comments. A review has four states: `PENDING`, `APPROVED`, `REQUEST_CHANGES`, `COMMENT`.
 
-### 列出 review
+### List Reviews
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews?page=1&limit=50" \
   | jq '[.[] | {id, user: .user.login, state, submitted_at, body}]'
 ```
 
-### 单个 review
+### Single Review
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}"
 ```
 
-### Review 的内联评论
+### Inline Comments on a Review
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}/comments" \
   | jq '[.[] | {id, path, position, body, user: .user.login}]'
 ```
 
-### 创建 review
+### Create Review
 
-可一次性带上所有内联评论。`event` 决定状态：
+Can include all inline comments in one request. `event` determines the state:
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -274,21 +274,21 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews"
 ```
 
-字段说明：
+Field reference:
 
-- `commit_id`：评审针对的 head SHA（不写则取当前 head）
-- `event`：`APPROVED` / `REQUEST_CHANGES` / `COMMENT` / 不传或 `PENDING`（暂存为 pending）
+- `commit_id`: head SHA being reviewed (defaults to current head if omitted)
+- `event`: `APPROVED` / `REQUEST_CHANGES` / `COMMENT` / omit or `PENDING` (saved as pending)
 - `comments[]`:
-  - `path`：相对仓库根的文件路径
-  - `old_position`：在 old file（删除/未变行）上的行号
-  - `new_position`：在 new file（新增/未变行）上的行号
-  - `body`：评论文本
+  - `path`: file path relative to repository root
+  - `old_position`: line number on the old file (deleted/unchanged lines)
+  - `new_position`: line number on the new file (added/unchanged lines)
+  - `body`: comment text
 
-`old_position` 与 `new_position` 二选一即可，对应行号取自 `pulls/{n}/files` 响应的 patch hunks。
+Either `old_position` or `new_position` is sufficient; line numbers come from patch hunks in the `pulls/{n}/files` response.
 
-### 提交 pending review
+### Submit Pending Review
 
-如果先创建了 PENDING review（`event` 不传），后续提交：
+If a PENDING review was created first (`event` omitted), submit later:
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -296,16 +296,16 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}"
 ```
 
-### 删除 review
+### Delete Review
 
 ```bash
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}"
 ```
 
-### Dismiss review
+### Dismiss Review
 
-驳回他人的 review（取消其 APPROVED / REQUEST_CHANGES 效力，常配合 PR 强制流程使用）：
+Dismiss another user's review (invalidates APPROVED / REQUEST_CHANGES; often used with branch protection):
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -313,18 +313,18 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}/dismissals"
 ```
 
-### 撤销 dismiss
+### Undo Dismiss
 
 ```bash
 curl -fsSL -X POST \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}/undismissals"
 ```
 
-恢复被 dismiss 的 review 的效力。
+Restores the effect of a dismissed review.
 
-## PR 状态（CI/合并检查）
+## PR Status (CI / Merge Checks)
 
-PR head commit 的检查状态走 commit statuses endpoint：
+Check status for the PR head commit uses the commit statuses endpoint:
 
 ```bash
 HEAD_SHA=$(curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}" | jq -r '.head.sha')
@@ -332,50 +332,50 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/commits/${HEAD_SHA}/stat
   | jq '[.[] | {context, state, description, target_url}]'
 ```
 
-或综合状态：
+Or combined status:
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/commits/${HEAD_SHA}/status"
 ```
 
-## 常见组合
+## Common Workflows
 
-### 完整发起 + 评审 + 合并
+### Full Open + Review + Merge
 
 ```bash
-# 1. 建 PR
+# 1. Create PR
 PR_NUM=$(curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"title":"feat: x","body":"...","head":"feat/x","base":"main"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls" | jq -r '.number')
 
-# 2. 请求评审
+# 2. Request review
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"reviewers":["alice"]}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/requested_reviewers"
 
-# 3. （reviewer 操作）批准
+# 3. (Reviewer) Approve
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"event":"APPROVED","body":"LGTM"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/reviews"
 
-# 4. 合并 + 删分支
+# 4. Merge + delete branch
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"Do":"squash","delete_branch_after_merge":true}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/merge"
 ```
 
-### 把 PR 分支与 base 同步
+### Sync PR Branch with Base
 
 ```bash
 curl -fsSL -X POST \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/update?style=rebase"
 ```
 
-## 权限提示
+## Permission Notes
 
-| 操作 | scope |
+| Operation | Scope |
 |------|-------|
-| 读 PR、diff、files | `read:repository` |
-| 创建/编辑 PR | `write:repository` |
-| 创建/提交 review | `write:repository`（且作为协作者） |
-| 合并 PR | `write:repository`（且具备分支合并权限） |
+| Read PR, diff, files | `read:repository` |
+| Create/edit PR | `write:repository` |
+| Create/submit review | `write:repository` (and must be a collaborator) |
+| Merge PR | `write:repository` (and branch merge permission) |

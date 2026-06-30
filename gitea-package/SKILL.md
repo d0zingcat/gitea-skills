@@ -1,38 +1,38 @@
 ---
 name: gitea-package
 version: 0.0.1
-description: "Gitea Packages 注册中心：列出包（每个版本一条）、列版本、看版本详情、看 latest、列文件、删除版本、把包绑定/解绑到仓库（用于权限继承）。涵盖 /packages/{owner} 系列 endpoint，支持 alpine/cargo/chef/composer/conan/conda/container/cran/debian/generic/go/helm/maven/npm/nuget/pub/pypi/rpm/rubygems/swift/vagrant 等类型。当用户需要在 Gitea Packages 上看某 owner 发布的包、清理旧版本镜像、查包元数据、把包关联到某个仓库时使用。"
+description: "Gitea Packages registry: list packages (one entry per version), list versions, get version details, get latest, list files, delete versions, and link/unlink packages to repositories (for permission inheritance). Covers /packages/{owner} endpoints; supports alpine/cargo/chef/composer/conan/conda/container/cran/debian/generic/go/helm/maven/npm/nuget/pub/pypi/rpm/rubygems/swift/vagrant and other types. Use when you need to browse packages published by an owner on Gitea Packages, clean up old image versions, inspect package metadata, or associate a package with a repository."
 ---
 
 # Gitea Packages
 
-**开始前必读 [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md)**：认证、curl 模板、错误处理。
+**Read first:** [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md) — auth, curl template, error handling.
 
-下面 curl 都省略 `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`。本文以 **Gitea 1.26.4** 的 OpenAPI 为准。
+The curls below omit `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`. This document follows the **Gitea 1.26.4** OpenAPI.
 
-## 关键概念
+## Key concepts
 
-- 包绑定到一个 **owner**（user 或 org）。
-- 包有 **type**（来自 swagger 真实 enum）：`alpine` / `cargo` / `chef` / `composer` / `conan` / `conda` / `container` / `cran` / `debian` / `generic` / `go` / `helm` / `maven` / `npm` / `nuget` / `pub` / `pypi` / `rpm` / `rubygems` / `swift` / `vagrant`。
-- 包名可能包含斜杠（如 container `repo/image`），URL 中需 URL-encode（`/` → `%2F`）。下文示例用 `${NAME_ENC}` 代表已 encode 后的名字。
-- `Package` 对象字段：`id`、`name`、`version`、`type`、`owner`、`repository`（关联仓库；可能为 null）、`creator`、`created_at`、`html_url`。**没有 `size` 字段**——文件大小要去 `/files` endpoint 看。
+- Packages belong to an **owner** (user or org).
+- Packages have a **type** (from the swagger enum): `alpine` / `cargo` / `chef` / `composer` / `conan` / `conda` / `container` / `cran` / `debian` / `generic` / `go` / `helm` / `maven` / `npm` / `nuget` / `pub` / `pypi` / `rpm` / `rubygems` / `swift` / `vagrant`.
+- Package names may contain slashes (e.g. container `repo/image`); URL-encode them in URLs (`/` → `%2F`). Examples below use `${NAME_ENC}` for the encoded name.
+- `Package` object fields: `id`, `name`, `version`, `type`, `owner`, `repository` (linked repo; may be null), `creator`, `created_at`, `html_url`. **There is no `size` field** — file sizes are on the `/files` endpoint.
 
-## 列出所有包（每个版本一条）
+## List all packages (one entry per version)
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}?type=container&page=1&limit=50" \
   | jq '[.[] | {name, version, type, repo: .repository.full_name, html_url, created_at}]'
 ```
 
-可选 query：
+Optional query parameters:
 
-| 参数 | 含义 |
-|------|------|
-| `type` | 过滤包类型 |
-| `q` | 按 **name 过滤（substring）** |
-| `page` / `limit` | 分页 |
+| Parameter | Meaning |
+|-----------|---------|
+| `type` | filter by package type |
+| `q` | filter by **name (substring)** |
+| `page` / `limit` | pagination |
 
-## 列出某个包的所有版本
+## List all versions of a package
 
 ```bash
 NAME_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "$NAME")
@@ -40,59 +40,59 @@ curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}/${TYPE}/${NAME_ENC}?page=1&li
   | jq '[.[] | {version, created_at, html_url}]'
 ```
 
-## 看 latest 版本
+## Get latest version
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}/${TYPE}/${NAME_ENC}/-/latest" \
   | jq '{name, version, type, created_at}'
 ```
 
-注意 URL 里的 `-/latest`（连字符 + 斜杠 + latest）。
+Note the `-/latest` in the URL (hyphen + slash + latest).
 
-## 看版本详情
+## Get version details
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}/${TYPE}/${NAME_ENC}/${VERSION}" \
   | jq '{name, version, type, created_at, repo: .repository.full_name, creator: .creator.login}'
 ```
 
-## 列出版本下的文件
+## List files in a version
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}/${TYPE}/${NAME_ENC}/${VERSION}/files" \
   | jq '[.[] | {id, name, size, sha256}]'
 ```
 
-`PackageFile` 字段：`id`、`name`、`size`、`md5`、`sha1`、`sha256`、`sha512`。下载具体文件由各 package 协议自己决定（npm/maven/容器都有自己的 client）。
+`PackageFile` fields: `id`, `name`, `size`, `md5`, `sha1`, `sha256`, `sha512`. Downloading individual files is handled by each package protocol's own client (npm/maven/container each have their own tooling).
 
-## 删除版本
+## Delete version
 
-**不可逆操作。删除后下载链接立刻失效，依赖此版本的 client 会失败。**
+**Irreversible. Download links stop working immediately; clients depending on this version will fail.**
 
 ```bash
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/packages/${OWNER}/${TYPE}/${NAME_ENC}/${VERSION}"
 ```
 
-## 把包绑定到仓库
+## Link package to repository
 
-把包关联到一个仓库后，仓库的协作者权限会继承到包上。常用于 GitHub Actions / Gitea Actions 自动 publish 后给 CI 仓库读权限：
+After linking a package to a repository, repository collaborator permissions are inherited by the package. Commonly used after GitHub Actions / Gitea Actions auto-publish to grant the CI repository read access:
 
 ```bash
 curl -fsSL -X POST \
   "${GITEA_HOST}/api/v1/packages/${OWNER}/${TYPE}/${NAME_ENC}/-/link/${REPO_NAME}"
 ```
 
-## 解绑
+## Unlink
 
 ```bash
 curl -fsSL -X POST \
   "${GITEA_HOST}/api/v1/packages/${OWNER}/${TYPE}/${NAME_ENC}/-/unlink"
 ```
 
-## 常见组合
+## Common workflows
 
-### 清理一个 npm 包除最新 5 个之外的所有版本
+### Clean up all but the latest 5 versions of an npm package
 
 ```bash
 NAME_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "@scope/pkg")
@@ -100,34 +100,34 @@ TO_DELETE=$(curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}/npm/${NAME_ENC}?l
   | jq -r 'sort_by(.created_at) | reverse | .[5:] | .[].version')
 for V in $TO_DELETE; do
   echo "Will delete ${V}"
-  # 实际删除前请取消注释并和用户确认
+  # Uncomment and confirm with the user before actually deleting
   # curl -fsSL -X DELETE "${GITEA_HOST}/api/v1/packages/${OWNER}/npm/${NAME_ENC}/${V}"
 done
 ```
 
-### 列出所有 container 镜像并按 name 分组
+### List all container images grouped by name
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}?type=container&limit=100" \
   | jq 'group_by(.name) | map({name: .[0].name, versions: [.[].version]})'
 ```
 
-### 把新发布的镜像绑到对应仓库
+### Link a newly published image to its repository
 
 ```bash
 NAME_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "my-app")
-# 拿 latest，确认已发布
+# get latest and confirm it was published
 curl -fsSL "${GITEA_HOST}/api/v1/packages/${OWNER}/container/${NAME_ENC}/-/latest" | jq '.version'
-# 绑定
+# link
 curl -fsSL -X POST \
   "${GITEA_HOST}/api/v1/packages/${OWNER}/container/${NAME_ENC}/-/link/my-app"
 ```
 
-## 权限提示
+## Permission notes
 
-| 操作 | scope |
-|------|-------|
-| 读公开包 | 无 |
-| 读私有包 | `read:package` |
-| 删除包版本 | `write:package` 或 owner 身份 |
-| 绑定/解绑包到仓库 | `write:package` + `write:repository` |
+| Operation | scope |
+|-----------|-------|
+| read public packages | none |
+| read private packages | `read:package` |
+| delete package version | `write:package` or owner identity |
+| link/unlink package to repository | `write:package` + `write:repository` |

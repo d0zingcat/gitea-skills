@@ -1,57 +1,57 @@
 ---
 name: gitea-issue
 version: 0.0.1
-description: "Gitea Issue 管理：创建/列出/更新 issue、添加/编辑评论、读写标签关联。涵盖 /repos/{owner}/{repo}/issues 系列 endpoint。当用户需要在 Gitea 上提 issue、看 issue 列表、加评论、改状态、给 issue 打/取消标签时使用。Issue 与 PR 共享 number 命名空间，但 PR 专用操作请用 gitea-pull skill。"
+description: "Gitea Issue management: create/list/update issues, add/edit comments, read/write label associations. Covers /repos/{owner}/{repo}/issues endpoints. Use when you need to file issues on Gitea, view issue lists, add comments, change status, or add/remove labels on issues. Issues and PRs share the same number namespace; use the gitea-pull skill for PR-specific operations."
 ---
 
 # Gitea Issue
 
-**开始前必读 [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md)**：认证、curl 模板、分页、错误处理。
+**Read first:** [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md) — auth, curl template, pagination, error handling.
 
-下面所有 curl 都省略了 `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`，请自行补齐。
+All curls below omit `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`; add them yourself.
 
-## 关键概念
+## Key concepts
 
-- **Issue number**：仓库内自增整数，与 Pull Request 共享同一序列。`#5` 既可能是 issue 也可能是 PR。
-- 通过 `/issues` endpoint 可以读到 issue 也能读到 pull request 的 issue 视图（带 `pull_request` 字段），但要拿 PR 专属信息（diff、reviewers）必须走 `/pulls/{n}`。
+- **Issue number**: auto-incrementing integer within a repository, sharing the same sequence as Pull Requests. `#5` may be an issue or a PR.
+- The `/issues` endpoint returns both issues and pull requests in issue view (with a `pull_request` field), but PR-specific data (diff, reviewers) requires `/pulls/{n}`.
 
-## 列出 issue
+## List issues
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues?state=open&page=1&limit=50" \
   | jq '[.[] | {number, title, state, user: .user.login, labels: [.labels[].name], updated_at}]'
 ```
 
-可选 query 参数：
+Optional query parameters:
 
-| 参数 | 含义 |
-|------|------|
-| `state` | `open` / `closed` / `all`（默认 open） |
-| `labels` | 逗号分隔的 label 名 |
-| `type` | `issues` / `pulls`（不传两者都返回） |
-| `q` | 关键字模糊匹配（标题/正文） |
-| `created_by` | 按创建者 username 过滤 |
-| `assigned_by` | 按 assignee 过滤 |
-| `mentioned_by` | 按被提及 username 过滤 |
-| `since` | ISO 8601 时间戳，更新时间晚于此 |
-| `before` | ISO 8601 时间戳，更新时间早于此 |
-| `milestones` | 逗号分隔的 milestone 名 |
-| `page` / `limit` | 分页 |
+| Parameter | Meaning |
+|-----------|---------|
+| `state` | `open` / `closed` / `all` (default `open`) |
+| `labels` | comma-separated label names |
+| `type` | `issues` / `pulls` (omit to return both) |
+| `q` | keyword fuzzy match (title/body) |
+| `created_by` | filter by creator username |
+| `assigned_by` | filter by assignee |
+| `mentioned_by` | filter by mentioned username |
+| `since` | ISO 8601 timestamp; updated after this time |
+| `before` | ISO 8601 timestamp; updated before this time |
+| `milestones` | comma-separated milestone names |
+| `page` / `limit` | pagination |
 
-## Issue 详情
+## Issue details
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}"
 ```
 
-精简输出：
+Compact output:
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}" \
   | jq '{number, title, state, body, user: .user.login, labels: [.labels[].name], assignees: [.assignees[]?.login], milestone: .milestone.title}'
 ```
 
-## 创建 issue
+## Create issue
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -66,24 +66,24 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues"
 ```
 
-字段说明：
+Field reference:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `title` | string | 必填 |
-| `body` | string | 正文（markdown） |
-| `assignees` | string[] | 用户名数组 |
-| `labels` | number[] | label **ID** 数组（不是 name） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | required |
+| `body` | string | body (markdown) |
+| `assignees` | string[] | array of usernames |
+| `labels` | number[] | array of label **IDs** (not names) |
 | `milestone` | number | milestone ID |
-| `ref` | string | 关联分支/commit |
-| `due_date` | ISO 8601 | 截止时间 |
-| `closed` | bool | 创建为已关闭状态（少见） |
+| `ref` | string | linked branch/commit |
+| `due_date` | ISO 8601 | due date |
+| `closed` | bool | create as closed (uncommon) |
 
-要先拿 label/milestone ID 见 `gitea-label` 和 `gitea-milestone` skill。
+To get label/milestone IDs first, see the `gitea-label` and `gitea-milestone` skills.
 
-## 更新 issue
+## Update issue
 
-`PATCH` 只更新提供的字段。
+`PATCH` updates only the fields you provide.
 
 ```bash
 curl -fsSL -X PATCH -H "Content-Type: application/json" \
@@ -95,18 +95,18 @@ curl -fsSL -X PATCH -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}"
 ```
 
-可改字段：`title`、`body`、`assignees`、`milestone`、`state`（`open`/`closed`）、`ref`、`due_date`、`unset_due_date`（true 时清除截止时间）。
+Updatable fields: `title`, `body`, `assignees`, `milestone`, `state` (`open`/`closed`), `ref`, `due_date`, `unset_due_date` (set to `true` to clear the due date).
 
-## 评论
+## Comments
 
-### 列出评论
+### List comments
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments" \
   | jq '[.[] | {id, user: .user.login, body, created_at}]'
 ```
 
-### 添加评论
+### Add comment
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -114,9 +114,9 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments"
 ```
 
-### 编辑评论
+### Edit comment
 
-注意 endpoint 用的是 comment ID（不是 issue number），路径在仓库下：
+Note: the endpoint uses the comment ID (not the issue number), under the repository path:
 
 ```bash
 curl -fsSL -X PATCH -H "Content-Type: application/json" \
@@ -124,24 +124,24 @@ curl -fsSL -X PATCH -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}"
 ```
 
-### 删除评论
+### Delete comment
 
 ```bash
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}"
 ```
 
-## 标签关联
+## Label associations
 
-`labels` 是仓库或组织级 label 的 **ID 数组**。先用 `gitea-label` skill 列 label 拿 ID。
+`labels` is an array of repository- or organization-level label **IDs**. List labels with the `gitea-label` skill to get IDs first.
 
-### 查看 issue 的标签
+### View issue labels
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ```
 
-### 追加标签
+### Add labels
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -149,7 +149,7 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ```
 
-### 替换全部标签
+### Replace all labels
 
 ```bash
 curl -fsSL -X PUT -H "Content-Type: application/json" \
@@ -157,41 +157,41 @@ curl -fsSL -X PUT -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ```
 
-### 删除单个标签
+### Remove one label
 
 ```bash
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels/${LABEL_ID}"
 ```
 
-### 清空标签
+### Clear all labels
 
 ```bash
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ```
 
-## 跨仓库搜索 issue
+## Cross-repository issue search
 
-跨仓库的全文搜索请走 `gitea-search` skill 的 `search_issues`（路径 `/repos/issues/search`）。
+For cross-repository full-text search, use `search_issues` from the `gitea-search` skill (`/repos/issues/search` path).
 
-## Reactions（表情回应）
+## Reactions
 
-Issue 和 issue comment 都支持表情回应。常用 content：`+1`、`-1`、`laugh`、`hooray`、`confused`、`heart`、`rocket`、`eyes`。
+Issues and issue comments both support reactions. Common `content` values: `+1`, `-1`, `laugh`, `hooray`, `confused`, `heart`, `rocket`, `eyes`.
 
 ### Issue reactions
 
 ```bash
-# 列出
+# list
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions" \
   | jq '[.[] | {user: .user.login, content, created_at}]'
 
-# 添加（同一用户对同一 content 重复 POST 是幂等的）
+# add (repeated POST with same content by the same user is idempotent)
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"content":"+1"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions"
 
-# 删除（自己的）
+# delete (your own)
 curl -fsSL -X DELETE -H "Content-Type: application/json" \
   -d '{"content":"+1"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions"
@@ -207,49 +207,49 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}/reactions"
 ```
 
-## 仓库级所有评论
+## All comments in a repository
 
-按时间窗拉仓库范围内所有 issue+PR 评论（不必逐 issue 查）：
+Fetch all issue+PR comments in a repository within a time window (no need to query issue by issue):
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments?since=2026-01-01T00:00:00Z&page=1&limit=50" \
   | jq '[.[] | {id, issue_url, user: .user.login, body: (.body | .[0:80]), created_at}]'
 ```
 
-可选 `since` / `before` 时间过滤。
+Optional `since` / `before` time filters.
 
-## 常见组合
+## Common workflows
 
-### 创建 issue 并立刻打标签
+### Create issue and add labels immediately
 
 ```bash
-# 1. 创建
+# 1. create
 NUM=$(curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"title":"Bug: x","body":"..."}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues" | jq -r '.number')
-# 2. 加标签
+# 2. add labels
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"labels":[3]}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${NUM}/labels"
 ```
 
-### 关闭并评论
+### Close and comment
 
 ```bash
-# 评论
+# comment
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"body":"Closing as fixed in #42"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments"
-# 关闭
+# close
 curl -fsSL -X PATCH -H "Content-Type: application/json" \
   -d '{"state":"closed"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}"
 ```
 
-## 权限提示
+## Permission notes
 
-| 操作 | scope |
-|------|-------|
-| 读 issue | `read:issue`（公开仓库无需） |
-| 创建/编辑 issue、评论 | `write:issue` |
-| 改 issue 标签 | `write:issue` |
+| Operation | scope |
+|-----------|-------|
+| read issue | `read:issue` (not required for public repos) |
+| create/edit issue, comments | `write:issue` |
+| change issue labels | `write:issue` |

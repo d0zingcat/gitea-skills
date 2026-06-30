@@ -1,23 +1,23 @@
 ---
 name: gitea-repo
 version: 0.0.1
-description: "Gitea 仓库操作：仓库创建/Fork/列表、分支管理、Commit 查询、文件读写、Tag 与 Release、目录树。涵盖 repos/branches/commits/contents/releases/tags/git/trees 系列 REST endpoint。当用户需要在 Gitea 上 list/create repo、fork、新建/删除 branch、读取或编辑文件、查 commit、打 tag、发 release、看仓库目录结构时使用。"
+description: "Gitea repository operations: list/create/fork repos, branch management, commit queries, file read/write, tags and releases, directory trees. Covers repos/branches/commits/contents/releases/tags/git/trees REST endpoints. Use when the user needs to list/create repos, fork, create/delete branches, read or edit files, query commits, create tags, publish releases, or browse repository directory structure on Gitea."
 ---
 
-# Gitea 仓库 (repo)
+# Gitea Repository (repo)
 
-**开始前必读 [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md)**：`GITEA_HOST` / `GITEA_ACCESS_TOKEN`、curl 模板、错误码、安全规则。
+**Read [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md) first:** `GITEA_HOST` / `GITEA_ACCESS_TOKEN`, curl templates, error codes, security rules.
 
-下文所有命令省略了：
+All commands below omit:
 
 ```bash
 -H "Authorization: token ${GITEA_ACCESS_TOKEN}"
 -H "Accept: application/json"
 ```
 
-请补齐到每条 curl。
+Add these headers to every curl.
 
-## 资源关系
+## Resource Relationships
 
 ```
 Repo (owner/repo)
@@ -25,31 +25,31 @@ Repo (owner/repo)
 │   └── Commit      (sha)
 │       └── File    (path@ref)
 ├── Tag             (tag_name)
-└── Release         (id, 关联 tag_name)
+└── Release         (id, linked to tag_name)
 ```
 
 ## Repository
 
-### 列出当前用户仓库
+### List Current User Repositories
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/user/repos?page=1&limit=50" \
   | jq '[.[] | {full_name, private, default_branch, description}]'
 ```
 
-### 列出组织仓库
+### List Organization Repositories
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/orgs/${ORG}/repos?page=1&limit=100" \
   | jq '[.[] | {full_name, private, default_branch}]'
 ```
 
-### 创建仓库
+### Create Repository
 
-个人下：`POST /user/repos`；组织下：`POST /orgs/{org}/repos`。
+Personal: `POST /user/repos`; organization: `POST /orgs/{org}/repos`.
 
 ```bash
-# 个人仓库
+# Personal repository
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{
     "name": "my-repo",
@@ -63,15 +63,15 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   }' \
   "${GITEA_HOST}/api/v1/user/repos"
 
-# 组织仓库
+# Organization repository
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"name":"my-repo","auto_init":true}' \
   "${GITEA_HOST}/api/v1/orgs/${ORG}/repos"
 ```
 
-可选 body 字段：`description`、`private`、`issue_labels`（label 集合名）、`auto_init`、`template`、`gitignores`、`license`、`readme`、`default_branch`、`trust_model`（`default`/`collaborator`/`committer`/`collaboratorcommitter`）、`object_format_name`（`sha1`/`sha256`）。
+Optional body fields: `description`, `private`, `issue_labels` (label set name), `auto_init`, `template`, `gitignores`, `license`, `readme`, `default_branch`, `trust_model` (`default`/`collaborator`/`committer`/`collaboratorcommitter`), `object_format_name` (`sha1`/`sha256`).
 
-### Fork 仓库
+### Fork Repository
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -79,45 +79,45 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${USER}/${REPO}/forks"
 ```
 
-`organization` 不传则 fork 到当前用户名下；`name` 不传则同名。
+If `organization` is omitted, the fork goes under the current user; if `name` is omitted, the same name is used.
 
 ## Branch
 
-### 列出分支
+### List Branches
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/branches?page=1&limit=50" \
   | jq '[.[] | {name, commit_sha: .commit.id, protected}]'
 ```
 
-### 创建分支
+### Create Branch
 
-`CreateBranchRepoOption` body：
+`CreateBranchRepoOption` body:
 
-| 字段 | 必填 | 说明 |
+| Field | Required | Description |
 |------|------|------|
-| `new_branch_name` | 是 | 新分支名 |
-| `old_ref_name` | 否 | source ref，可以是 **branch / tag / commit SHA**。不传则用仓库默认分支。 |
-| `old_branch_name` | 否 | **已 deprecated**，仅作老版本兼容；新代码用 `old_ref_name` |
+| `new_branch_name` | Yes | New branch name |
+| `old_ref_name` | No | Source ref; can be a **branch / tag / commit SHA**. Defaults to the repository default branch if omitted. |
+| `old_branch_name` | No | **Deprecated**; kept for backward compatibility only. Use `old_ref_name` in new code. |
 
 ```bash
-# 从 main 分支建新分支
+# Create branch from main
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"new_branch_name":"feature/x","old_ref_name":"main"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/branches"
 
-# 从某个 tag 建分支
+# Create branch from a tag
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"new_branch_name":"hotfix/v1.0","old_ref_name":"v1.0.0"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/branches"
 
-# 从某个 commit 建分支
+# Create branch from a commit
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d '{"new_branch_name":"backport","old_ref_name":"abc123def"}' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/branches"
 ```
 
-### 删除分支
+### Delete Branch
 
 ```bash
 curl -fsSL -X DELETE \
@@ -126,66 +126,66 @@ curl -fsSL -X DELETE \
 
 ## Commit
 
-### 列出仓库提交
+### List Repository Commits
 
-可选 `sha`（起点 SHA 或分支名）、`path`（只看影响该路径的提交）。
+Optional `sha` (starting SHA or branch name), `path` (only commits affecting that path).
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/commits?sha=main&page=1&limit=20" \
   | jq '[.[] | {sha, msg: .commit.message, author: .commit.author.name, date: .commit.author.date}]'
 ```
 
-### 单个提交详情
+### Single Commit Details
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/commits/${SHA}" \
   | jq '{sha, message: .commit.message, files: [.files[].filename]}'
 ```
 
-## File（文件读写）
+## File (Read/Write)
 
-`path` 在 URL 中**不要 URL-encode 斜杠**，直接拼。
+Do **not URL-encode slashes** in `path`; concatenate directly in the URL.
 
-### 读取文件内容
+### Read File Content
 
-`ref` 可以是分支名、tag、SHA。
+`ref` can be a branch name, tag, or SHA.
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/${PATH}?ref=${REF}" \
   | jq -r '.content' | base64 -d
 ```
 
-如果想保留 base64 元信息：
+To keep base64 metadata:
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/${PATH}?ref=${REF}" \
   | jq '{name, sha, size, encoding, html_url}'
 ```
 
-### 列目录条目
+### List Directory Entries
 
-`path` 给目录路径，响应是数组：
+Provide a directory path for `path`; the response is an array:
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/${DIR}?ref=${REF}" \
   | jq '[.[] | {name, type, size, sha}]'
 ```
 
-`type` 为 `file` / `dir` / `symlink` / `submodule`。
+`type` is `file` / `dir` / `symlink` / `submodule`.
 
-### 创建文件
+### Create File
 
-`CreateFileOptions` body：
+`CreateFileOptions` body:
 
-| 字段 | 必填 | 说明 |
+| Field | Required | Description |
 |------|------|------|
-| `content` | 是 | **必须 base64 编码** |
-| `branch` | 否 | 目标分支，不传用仓库默认分支 |
-| `new_branch` | 否 | 给值时会先从 `branch` 建出这个新分支再提交 |
-| `message` | 否 | commit message，不传给个默认值 |
-| `author` / `committer` | 否 | `Identity` 类型 `{name, email}`，覆盖提交者身份 |
-| `signoff` | 否 | `true` 时自动加 `Signed-off-by` 行 |
-| `dates` | 否 | `CommitDateOptions`，自定义 commit 时间 |
+| `content` | Yes | **Must be base64-encoded** |
+| `branch` | No | Target branch; defaults to repository default branch if omitted |
+| `new_branch` | No | If set, creates this branch from `branch` first, then commits |
+| `message` | No | Commit message; a default is used if omitted |
+| `author` / `committer` | No | `Identity` type `{name, email}`; overrides committer identity |
+| `signoff` | No | When `true`, automatically adds a `Signed-off-by` line |
+| `dates` | No | `CommitDateOptions`; custom commit timestamps |
 
 ```bash
 CONTENT=$(printf 'hello\n' | base64)
@@ -198,7 +198,7 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hello.txt"
 ```
 
-边写边建分支：
+Create branch while writing:
 
 ```bash
 CONTENT=$(printf 'hello\n' | base64)
@@ -212,11 +212,11 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hello.txt"
 ```
 
-### 更新文件
+### Update File
 
-`UpdateFileOptions` 字段：`sha`（必填）+ `content`（必填，base64）+ `branch`、`new_branch`、`message`、`author`、`committer`、`signoff`、`dates`、**`from_path`**（移动/重命名旧路径到 URL 中的新路径）。
+`UpdateFileOptions` fields: `sha` (required) + `content` (required, base64) + `branch`, `new_branch`, `message`, `author`, `committer`, `signoff`, `dates`, **`from_path`** (move/rename from old path to new path in URL).
 
-更新必须带原文件 `sha`，先 `GET` 拿，再 `PUT`：
+Updates require the original file `sha`; `GET` first, then `PUT`:
 
 ```bash
 SHA=$(curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hello.txt?ref=main" | jq -r '.sha')
@@ -231,10 +231,10 @@ curl -fsSL -X PUT -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hello.txt"
 ```
 
-**重命名/移动文件**：URL 是新路径，body 里 `from_path` 是旧路径：
+**Rename/move file:** URL is the new path; `from_path` in the body is the old path:
 
 ```bash
-# 把 hello.txt 移到 docs/hello.txt
+# Move hello.txt to docs/hello.txt
 SHA=$(curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hello.txt?ref=main" | jq -r '.sha')
 CONTENT=$(curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hello.txt?ref=main" | jq -r '.content')
 curl -fsSL -X PUT -H "Content-Type: application/json" \
@@ -248,7 +248,7 @@ curl -fsSL -X PUT -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/docs/hello.txt"
 ```
 
-### 删除文件
+### Delete File
 
 ```bash
 SHA=$(curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hello.txt?ref=main" | jq -r '.sha')
@@ -259,22 +259,22 @@ curl -fsSL -X DELETE -H "Content-Type: application/json" \
 
 ## Tag
 
-### 列出 tag
+### List Tags
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/tags?page=1&limit=20" \
   | jq '[.[] | {name, commit_sha: .commit.sha, message}]'
 ```
 
-### 获取单个 tag
+### Get Single Tag
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/tags/${TAG}"
 ```
 
-### 创建 tag
+### Create Tag
 
-`target` 是 commit SHA 或分支名。`message` 给非空则创建 annotated tag。
+`target` is a commit SHA or branch name. A non-empty `message` creates an annotated tag.
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -282,7 +282,7 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/tags"
 ```
 
-### 删除 tag
+### Delete Tag
 
 ```bash
 curl -fsSL -X DELETE \
@@ -291,32 +291,32 @@ curl -fsSL -X DELETE \
 
 ## Release
 
-Release 与 Tag 是不同资源，但通过 `tag_name` 关联。删除 release 默认不删 tag。
+Release and Tag are different resources, linked via `tag_name`. Deleting a release does not delete the tag by default.
 
-### 列出 release
+### List Releases
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/releases?page=1&limit=20" \
   | jq '[.[] | {id, tag_name, name, draft, prerelease, published_at}]'
 ```
 
-可选过滤：`draft=true|false`、`pre-release=true|false`（注意是连字符）。
+Optional filters: `draft=true|false`, `pre-release=true|false` (note the hyphen).
 
-### 最新 release
+### Latest Release
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/releases/latest"
 ```
 
-### 单个 release
+### Single Release
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/releases/${ID}"
 ```
 
-### 创建 release
+### Create Release
 
-`target_commitish` 通常给分支名（如 `main`）或 commit SHA。`tag_name` 不存在会自动创建 tag。
+`target_commitish` is usually a branch name (e.g. `main`) or commit SHA. If `tag_name` does not exist, a tag is created automatically.
 
 ```bash
 curl -fsSL -X POST -H "Content-Type: application/json" \
@@ -331,58 +331,58 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/releases"
 ```
 
-### 删除 release
+### Delete Release
 
 ```bash
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/releases/${ID}"
 ```
 
-## Tree（仓库目录树）
+## Tree (Repository Directory Tree)
 
-按 `tree_sha` 拉取目录树。`tree_sha` 可以是 commit SHA、tag 或分支名。`recursive=true` 返回整个子树。
+Fetch directory tree by `tree_sha`. `tree_sha` can be a commit SHA, tag, or branch name. `recursive=true` returns the entire subtree.
 
-**注意**：`git/trees` 是 Gitea API 里少数**用 `per_page` 而不是 `limit`** 的 endpoint。传 `limit` 会被忽略，返回完整一页。
+**Note:** `git/trees` is one of the few Gitea API endpoints that uses **`per_page` instead of `limit`**. Passing `limit` is ignored; the full page is returned.
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/git/trees/${REF}?recursive=true&page=1&per_page=50" \
   | jq '{truncated, sha, count: (.tree | length), tree: [.tree[] | {path, type, sha, size}]}'
 ```
 
-`type` 为 `blob`（文件）或 `tree`（目录）。`truncated=true` 表示数量被服务端截断，需要分页或缩小子树。
+`type` is `blob` (file) or `tree` (directory). `truncated=true` means the result was truncated server-side; paginate or narrow the subtree.
 
-## 常见组合操作
+## Common Combined Operations
 
-### 在新分支提交一个文件并发起 PR
+### Commit a File on a New Branch and Open a PR
 
 ```bash
-# 1. 拿默认分支
+# 1. Get default branch
 DEF=$(curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}" | jq -r '.default_branch')
-# 2. 建分支
+# 2. Create branch
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d "$(jq -n --arg b "feat/x" --arg o "$DEF" '{new_branch_name:$b, old_branch_name:$o}')" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/branches"
-# 3. 创建文件
+# 3. Create file
 CONTENT=$(printf 'hi\n' | base64)
 curl -fsSL -X POST -H "Content-Type: application/json" \
   -d "$(jq -n --arg c "$CONTENT" '{branch:"feat/x", message:"add hi", content:$c}')" \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/contents/hi.txt"
-# 4. 用 gitea-pull skill 发起 PR
+# 4. Open PR using gitea-pull skill
 ```
 
-### 比较两个分支变化
+### Compare Changes Between Two Branches
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/compare/main...feat/x"
 ```
 
-## 权限/scope 提示
+## Permissions / Scope Notes
 
-| 操作 | 至少需要的 PAT scope |
+| Operation | Minimum PAT scope required |
 |------|----------------------|
-| 读公开仓库 | 无（甚至匿名也行） |
-| 读私有仓库、分支、文件 | `read:repository` |
-| 写文件、创建分支、删除分支 | `write:repository` |
-| 创建仓库（个人/组织） | `write:repository` 或 `write:organization` |
-| 删除仓库 | `delete:repository` |
-| 创建/删除 release、tag | `write:repository` |
+| Read public repository | None (anonymous access works) |
+| Read private repo, branches, files | `read:repository` |
+| Write files, create/delete branches | `write:repository` |
+| Create repository (personal/org) | `write:repository` or `write:organization` |
+| Delete repository | `delete:repository` |
+| Create/delete release, tag | `write:repository` |
