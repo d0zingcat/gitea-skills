@@ -58,7 +58,7 @@ jobs:
             --exclude '^https?://github\.com/d0zingcat/gitea-skills/(compare|releases/tag)/'
             --accept '200..=299,401,403'
             ./README.md
-            ./README.en.md
+            ./README.zh.md
             ./CHANGELOG.md
             ./examples/*.md
             ./gitea-*/SKILL.md
