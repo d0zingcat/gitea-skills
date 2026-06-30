@@ -1,108 +1,108 @@
 ---
 name: gitea-notification
-version: 0.0.1
-description: "Gitea 通知：列出未读/已读通知（用户级或仓库级）、获取单个 thread 详情、标记已读、批量标记。涵盖 /notifications 与 /repos/{owner}/{repo}/notifications endpoint。当用户需要查 Gitea 收件箱、批量清掉未读、看某条通知详情时使用。"
+version: 0.0.2
+description: "Gitea notifications: list unread/read notifications (user-level or repo-level), get a single thread, mark as read, and batch mark. Covers /notifications and /repos/{owner}/{repo}/notifications endpoints. Use when you need to check your Gitea inbox, bulk-clear unread items, or view notification details."
 ---
 
 # Gitea Notification
 
-**开始前必读 [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md)**：认证、curl 模板、错误处理。
+**Read first:** [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md) — auth, curl template, error handling.
 
-下面 curl 都省略 `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`。
+The curls below omit `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`.
 
-## 关键概念
+## Key concepts
 
-- 通知是**当前用户**视角的（认证 token 决定主体）。
-- 一个 **thread** 对应一个 issue / PR / commit / repo 的更新链，不是单条评论。
-- 状态：`unread` / `read` / `pinned`。
+- Notifications are from the **current user's** perspective (the authenticated token determines the subject).
+- A **thread** corresponds to an update chain for an issue / PR / commit / repo — not a single comment.
+- States: `unread` / `read` / `pinned`.
 
-## 列出
+## List
 
-### 全部（当前用户）
+### All (current user)
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/notifications?status-types=unread&page=1&limit=50" \
   | jq '[.[] | {id, subject: .subject.title, type: .subject.type, state: .subject.state, repo: .repository.full_name, updated_at}]'
 ```
 
-### 仓库范围
+### Repository scope
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/notifications?status-types=unread"
 ```
 
-### 可选过滤
+### Optional filters
 
-| 参数 | 含义 |
-|------|------|
-| `status-types` | 重复传，`unread` / `read` / `pinned`（如 `?status-types=unread&status-types=pinned`） |
-| `subject-type` | `issue` / `pull` / `commit` / `repository`（**全小写**；响应里 `.subject.type` 反而是 TitleCase 如 `Issue`） |
-| `since` | ISO 8601，更新时间晚于此 |
-| `before` | ISO 8601，更新时间早于此 |
-| `all` | `true` 时**额外包含已读**通知（默认只返回未读+pinned） |
-| `page` / `limit` | 分页 |
+| Parameter | Meaning |
+|-----------|---------|
+| `status-types` | repeat for multiple values: `unread` / `read` / `pinned` (e.g. `?status-types=unread&status-types=pinned`) |
+| `subject-type` | `issue` / `pull` / `commit` / `repository` (**all lowercase**; response `.subject.type` is TitleCase such as `Issue`) |
+| `since` | ISO 8601; updated after this time |
+| `before` | ISO 8601; updated before this time |
+| `all` | `true` to **also include read** notifications (default returns only unread + pinned) |
+| `page` / `limit` | pagination |
 
-## 单个 thread
+## Single thread
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/notifications/threads/${ID}"
 ```
 
-## 标记已读
+## Mark as read
 
-### 单个 thread
+### Single thread
 
 ```bash
 curl -fsSL -X PATCH \
   "${GITEA_HOST}/api/v1/notifications/threads/${ID}"
 ```
 
-可加 `?to-status=read|pinned|unread` 切换状态。
+Optional `?to-status=read|pinned|unread` to change state.
 
-### 批量（用户级）
+### Batch (user-level)
 
 ```bash
 curl -fsSL -X PUT \
   "${GITEA_HOST}/api/v1/notifications?last_read_at=$(date -u +%FT%TZ)"
 ```
 
-`last_read_at` 不传则用当前时间。早于该时间的通知都标已读。
+If `last_read_at` is omitted, the current time is used. Notifications older than that time are marked read.
 
-可加额外 query 限定要标记的范围：
-- `?to-status=read`（默认）/ `pinned` / `unread`
-- `?status-types=unread`（重复传）限定只标某状态
-- `?all=true` 包含已读
+Additional query parameters to limit what gets marked:
+- `?to-status=read` (default) / `pinned` / `unread`
+- `?status-types=unread` (repeat) to mark only certain states
+- `?all=true` to include read notifications
 
 ```bash
-# 只把 PR 类未读标已读
+# mark only unread PR notifications as read
 curl -fsSL -X PUT \
   "${GITEA_HOST}/api/v1/notifications?status-types=unread&subject-type=pull"
 ```
 
-### 批量（仓库级）
+### Batch (repo-level)
 
 ```bash
 curl -fsSL -X PUT \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/notifications"
 ```
 
-## 常见组合
+## Common workflows
 
-### 列出未读 PR review 通知
+### List unread PR review notifications
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/notifications?status-types=unread&subject-type=Pull&limit=50" \
   | jq '[.[] | {id, title: .subject.title, repo: .repository.full_name, url: .subject.html_url}]'
 ```
 
-### 一键清空所有未读
+### Mark all unread as read in one step
 
 ```bash
 curl -fsSL -X PUT "${GITEA_HOST}/api/v1/notifications"
 ```
 
-**这是不可逆操作**（标已读后无法批量恢复未读）。执行前确认用户意图。
+**This is irreversible** (you cannot bulk-restore unread after marking read). Confirm user intent before running.
 
-## 权限提示
+## Permission notes
 
-`/notifications` 走当前用户 token，无需额外 scope。`/repos/{owner}/{repo}/notifications` 需要至少 `read:repository`。
+`/notifications` uses the current user's token; no extra scope required. `/repos/{owner}/{repo}/notifications` requires at least `read:repository`.
