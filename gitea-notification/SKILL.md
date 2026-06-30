@@ -1,6 +1,6 @@
 ---
 name: gitea-notification
-version: 0.0.1
+version: 0.0.2
 description: "Gitea notifications: list unread/read notifications (user-level or repo-level), get a single thread, mark as read, and batch mark. Covers /notifications and /repos/{owner}/{repo}/notifications endpoints. Use when you need to check your Gitea inbox, bulk-clear unread items, or view notification details."
 ---
 

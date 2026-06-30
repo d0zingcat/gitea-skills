@@ -1,6 +1,6 @@
 ---
 name: gitea-pull
-version: 0.0.1
+version: 0.0.2
 description: "Gitea Pull Request management: create/edit/merge/close PRs, read diff and file lists, review workflow (create review, submit pending review, approve/reject/dismiss, add inline comments), add/remove reviewers, update PR branch from base. Covers /repos/{owner}/{repo}/pulls REST endpoints. Use when the user needs to open PRs, merge PRs, run code review workflows, revert reviews, or inspect PR changed files or diffs on Gitea."
 ---
 

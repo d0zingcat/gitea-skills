@@ -1,6 +1,6 @@
 ---
 name: gitea-package
-version: 0.0.1
+version: 0.0.2
 description: "Gitea Packages registry: list packages (one entry per version), list versions, get version details, get latest, list files, delete versions, and link/unlink packages to repositories (for permission inheritance). Covers /packages/{owner} endpoints; supports alpine/cargo/chef/composer/conan/conda/container/cran/debian/generic/go/helm/maven/npm/nuget/pub/pypi/rpm/rubygems/swift/vagrant and other types. Use when you need to browse packages published by an owner on Gitea Packages, clean up old image versions, inspect package metadata, or associate a package with a repository."
 ---
 

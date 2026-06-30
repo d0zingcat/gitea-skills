@@ -1,6 +1,6 @@
 ---
 name: gitea-user
-version: 0.0.1
+version: 0.0.2
 description: "Gitea users and organizations: get the current user, list organizations for the current user, and get the Gitea instance version. Covers /user, /user/orgs, and /version endpoints. Use when you need to confirm Gitea login identity, see which user a token belongs to, list orgs you belong to, or confirm the Gitea version."
 ---
 

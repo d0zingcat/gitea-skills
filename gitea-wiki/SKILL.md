@@ -1,6 +1,6 @@
 ---
 name: gitea-wiki
-version: 0.0.1
+version: 0.0.2
 description: "Gitea Wiki: list, read, create, update, and delete wiki pages; view page revision history. Covers /repos/{owner}/{repo}/wiki endpoints. Use when you need to write docs on Gitea Wiki, view wiki history, or batch-organize wiki pages."
 ---
 

@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] – 2026-06-30
+
 ### Changed
 
-- **`gitea-shared`** / **`setup.sh`**：配置缺失时提醒用户前往 `{GITEA_HOST}/user/settings/applications` 生成 PAT。
-- **`gitea-shared`** / **README**：`npx skills add` 不安装 `setup.sh`；默认配置流程改为用户向 agent 提供 host + PAT，由 agent 用 Write 工具写 `~/.config/gitea-skills/config`。`setup.sh` 仅作为克隆完整仓库后的可选项。
+- **All 13 skills**: translate `SKILL.md` content (YAML `description` and full body) from Chinese to English; API paths and curl examples unchanged.
+- **`gitea-shared`** / **`setup.sh`**: when config is missing, prompt the user to generate a PAT at `{GITEA_HOST}/user/settings/applications`.
+- **`gitea-shared`** / **README**: `npx skills add` does not install `setup.sh`; default setup is the user providing host + PAT to the agent, which writes `~/.config/gitea-skills/config` via the Write tool. `setup.sh` remains optional after a full repo clone.
 
 ## [0.1.1] – 2026-06-29
 
@@ -28,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `scripts/smoke_test.sh`: fix broken jq escaping in the `create file` assertion (was always failing with rc=4).
 
-[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.1...v0.1.3
 [0.1.1]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.0...v0.1.1
 
 ### Changed

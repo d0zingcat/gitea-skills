@@ -1,6 +1,6 @@
 ---
 name: gitea-search
-version: 0.0.1
+version: 0.0.2
 description: "Gitea search: cross-repository issue/PR search, repository search, user search, and organization team search. Covers /repos/issues/search, /repos/search, /users/search, and /orgs/{org}/teams/search endpoints. Use when you need to find issues across multiple Gitea repositories, search repositories or users by keyword, or find a team within an organization."
 ---
 

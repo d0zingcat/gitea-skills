@@ -1,6 +1,6 @@
 ---
 name: gitea-label
-version: 0.0.1
+version: 0.0.2
 description: "Gitea Label management: list, create, edit, and delete repository-level and organization-level labels. Covers /repos/{owner}/{repo}/labels and /orgs/{org}/labels endpoints. Use when you need to manage issue/PR labels in a Gitea repo or org, batch-create labels, change label colors, or archive labels."
 ---
 

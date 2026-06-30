@@ -1,6 +1,6 @@
 ---
 name: gitea-issue
-version: 0.0.1
+version: 0.0.2
 description: "Gitea Issue management: create/list/update issues, add/edit comments, read/write label associations. Covers /repos/{owner}/{repo}/issues endpoints. Use when you need to file issues on Gitea, view issue lists, add comments, change status, or add/remove labels on issues. Issues and PRs share the same number namespace; use the gitea-pull skill for PR-specific operations."
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: gitea-shared
-version: 0.1.2
+version: 0.1.3
 description: "Gitea REST API shared foundation (for self-hosted Gitea instances): host and token configuration, curl calling conventions, self-signed/internal TLS, pagination, error handling, version compatibility, security rules. All gitea-* skills depend on these conventions before calling the API. Use when the user first needs to operate a self-hosted Gitea instance, configure GITEA_HOST/GITEA_ACCESS_TOKEN, hit SSL certificate errors, 401/403/404, needs batch pagination, or wants to write a curl call to Gitea."
 ---
 

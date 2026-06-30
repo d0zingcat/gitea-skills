@@ -1,6 +1,6 @@
 ---
 name: gitea-repo
-version: 0.0.1
+version: 0.0.2
 description: "Gitea repository operations: list/create/fork repos, branch management, commit queries, file read/write, tags and releases, directory trees. Covers repos/branches/commits/contents/releases/tags/git/trees REST endpoints. Use when the user needs to list/create repos, fork, create/delete branches, read or edit files, query commits, create tags, publish releases, or browse repository directory structure on Gitea."
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: gitea-actions
-version: 0.1.1
+version: 0.1.2
 description: "Gitea Actions: list workflows, list runs (runs/tasks), dispatch workflow, list jobs, read job logs, rerun run/job, read/write repo/org/user-level secrets and variables, manage artifacts and runners, enable/disable workflow. Covers /repos/{o}/{r}/actions, /orgs/{org}/actions, /user/actions, /admin/actions endpoint families. Use when the user needs to check CI status, manually dispatch a workflow, read build logs, rerun failed jobs, configure CI tokens or env vars, manage self-hosted runners, or download build artifacts."
 ---
 

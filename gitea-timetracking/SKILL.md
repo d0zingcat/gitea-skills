@@ -1,6 +1,6 @@
 ---
 name: gitea-timetracking
-version: 0.0.1
+version: 0.0.2
 description: "Gitea time tracking: issue stopwatch (start/stop/cancel), manually add and delete time entries, list time by issue/repo/current user. Covers /repos/{owner}/{repo}/issues/{n}/stopwatch and /times endpoints. Use when you need to track time on Gitea issues, summarize repo time, or view your own time entries."
 ---
 

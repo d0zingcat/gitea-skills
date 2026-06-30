@@ -1,6 +1,6 @@
 ---
 name: gitea-milestone
-version: 0.0.1
+version: 0.0.2
 description: "Gitea Milestone: list, get, create, update, and delete repository-level milestones. Covers /repos/{owner}/{repo}/milestones endpoints. Use when you need to manage milestones on Gitea, associate issues/PRs with a milestone, set due dates, or close milestones."
 ---
 
