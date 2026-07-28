@@ -77,29 +77,50 @@ After installation, restart the agent so it picks up the new skills. This keeps 
 
 ## Configuration
 
+gitea-skills supports **multiple named profiles** — one per Gitea instance — for users with more than one environment (e.g. prod / staging / public mirror). Each profile stores its own `GITEA_HOST` + `GITEA_ACCESS_TOKEN` pair under `~/.config/gitea-skills/profiles/<name>`. The loader picks the right profile per operation via this fallback order:
+
+1. `GITEA_HOST` + `GITEA_ACCESS_TOKEN` env vars already set (CI / direnv / manual export) — highest priority
+2. `GITEA_PROFILE=<name>` env var — explicit override for one command
+3. **git remote auto-match** — if the current dir is a git repo, the loader matches the `origin` host against every profile's `GITEA_HOST` and uses the first match
+4. `~/.config/gitea-skills/default-profile` file — the default for non-git contexts
+5. Legacy single-instance `~/.config/gitea-skills/config` — backward compatibility
+
 ### Option A (`npx skills add`, recommended)
 
-On first use, **send your Gitea host and PAT to the agent**. It writes `~/.config/gitea-skills/config` (`chmod 600`). Skills auto-`source` that file — **no manual export needed**.
+On first use, **send the agent a profile name + Gitea host + PAT**. It writes `~/.config/gitea-skills/profiles/<name>` (`chmod 600`) and, for the first profile, sets `default-profile`. Skills auto-load the right profile — **no manual export needed**.
 
 If you don't have a PAT yet, open `{your-gitea-host}/user/settings/applications` in your browser (e.g. `https://git.example.com/user/settings/applications`).
 
-- Update token: send a new PAT to the agent to overwrite the config
-- Remove config: delete `~/.config/gitea-skills/config`
+To register several environments at once, send the agent one message with the triples:
 
-You can also `export GITEA_HOST=...` and `export GITEA_ACCESS_TOKEN=...` yourself (direnv, shell rc, etc.).
+```
+profile: quantpi  host: https://gitea.quantpi.cn                  token: <PAT1>
+profile: pe        host: https://gitea.pe.qpalpha.com             token: <PAT2>
+profile: public    host: https://gitea-public.pe.qpalpha.com:8443  token: <PAT3>
+```
+
+- Add another profile: send a new name + host + PAT to the agent
+- Update a profile's token: tell the agent which profile to overwrite
+- Switch the default for non-git contexts: `./setup.sh use <name>` (if you cloned the repo) or ask the agent to rewrite `default-profile`
+- Remove one profile: delete `~/.config/gitea-skills/profiles/<name>`
+- Remove everything: delete `~/.config/gitea-skills/`
+
+You can also `export GITEA_HOST=...` and `export GITEA_ACCESS_TOKEN=...` yourself (direnv, shell rc, CI) — this bypasses profiles entirely and wins over everything else.
 
 ### Option B (after cloning the repo, optional)
 
 ```bash
-bash setup.sh
+bash setup.sh             # interactive multi-profile manager (list / add / use / remove)
+bash setup.sh list        # show all profiles (default marked with *)
+bash setup.sh add pe      # add a profile (still prompts for host + token)
+bash setup.sh use pe       # set pe as the default for non-git contexts
+bash setup.sh remove pe    # delete a profile
+bash setup.sh --uninstall  # remove the whole config directory
 ```
 
-Interactive host + PAT entry with connectivity checks, writing to the same config path. You can still use the agent to write config instead.
+`setup.sh` writes profile files with connectivity checks. You can still use the agent to write profiles instead.
 
-- Update token: `bash setup.sh` or send a new PAT to the agent
-- Remove config: `bash setup.sh --uninstall` or delete the config file manually
-
-Full details (self-signed CA, reverse-proxy path prefix, scope selection) in [gitea-shared/SKILL.md](gitea-shared/SKILL.md).
+Full details (load order, self-signed CA, reverse-proxy path prefix, scope selection, migrating from a legacy single-instance config) in [gitea-shared/SKILL.md](gitea-shared/SKILL.md).
 
 ## Usage examples
 

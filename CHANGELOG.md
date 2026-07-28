@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] – 2026-07-28
+
+### Added
+
+- **Multi-profile support**: `gitea-skills` now supports multiple named Gitea instances (e.g. prod / staging / public mirror), one file per profile under `~/.config/gitea-skills/profiles/<name>`. Useful for users with more than one Gitea environment.
+- **Git remote auto-match**: when operating inside a git repo, the loader matches the `origin` remote host against every profile's `GITEA_HOST` and picks the matching profile automatically — no explicit profile name needed for repo-scoped operations.
+- **`GITEA_PROFILE=<name>` env var**: explicit per-command override.
+- **`default-profile` file**: names the profile to use for non-git contexts.
+- **`setup.sh` multi-profile manager**: new subcommands `list`, `add`, `use`, `remove` (plus the existing `--uninstall` / `--print` / `--help`). Interactive menu when called with no args.
+- **Migration path** from the legacy single-instance `~/.config/gitea-skills/config` (still honored as a fallback).
+
+### Changed
+
+- **`gitea-shared`**: rewrote the "Configuration" and "curl calling conventions" sections to document the 5-level load order (env vars → `GITEA_PROFILE` → git remote match → `default-profile` → legacy `config`).
+- **`gitea-actions`**: updated the execution-boundary rule to reference the loader-resolved profile path instead of the legacy single config file.
+- **README** (en + zh), **examples/README**: documented multi-profile usage and the load order.
+- **CI lint**: extended the lychee link-check exclude list to cover `*.qpalpha.com` example hosts.
+
 ## [0.1.3] – 2026-06-30
 
 ### Changed
@@ -31,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `scripts/smoke_test.sh`: fix broken jq escaping in the `create file` assertion (was always failing with rc=4).
 
-[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/d0zingcat/gitea-skills/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.1...v0.1.3
 [0.1.1]: https://github.com/d0zingcat/gitea-skills/compare/v0.1.0...v0.1.1
 

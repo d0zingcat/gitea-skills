@@ -77,29 +77,50 @@ done
 
 ## 配置
 
+gitea-skills 支持**多命名 profile**——每个 Gitea 实例一个——适合有多套环境（如 prod / staging / public 镜像）的用户。每个 profile 在 `~/.config/gitea-skills/profiles/<name>` 下存自己的 `GITEA_HOST` + `GITEA_ACCESS_TOKEN`。loader 按以下优先级为每次操作挑选 profile：
+
+1. `GITEA_HOST` + `GITEA_ACCESS_TOKEN` 环境变量已设置（CI / direnv / 手动 export）——最高优先级
+2. `GITEA_PROFILE=<name>` 环境变量——对单条命令的显式覆盖
+3. **git remote 自动匹配**——当前目录是 git 仓库时，loader 把 `origin` 的 host 与每个 profile 的 `GITEA_HOST` 比对，命中即用
+4. `~/.config/gitea-skills/default-profile` 文件——非 git 上下文的默认
+5. 旧的单实例 `~/.config/gitea-skills/config`——向后兼容
+
 ### 方式 A（`npx skills add`，推荐）
 
-首次使用 Gitea 相关功能时，**把实例地址和 PAT 发给 agent**，由 agent 写入 `~/.config/gitea-skills/config`（`chmod 600`）。之后 skill 自动 `source` 该文件，**无需手动 export**。
+首次使用 Gitea 相关功能时，**把 profile 名 + 实例地址 + PAT 发给 agent**，由 agent 写入 `~/.config/gitea-skills/profiles/<name>`（`chmod 600`）；第一个 profile 会同时设为 `default-profile`。之后 skill 自动加载对应 profile，**无需手动 export**。
 
 尚无 PAT 时，在浏览器打开 `{你的 Gitea 地址}/user/settings/applications` 生成（例如 `https://git.example.com/user/settings/applications`）。
 
-- 更新 token：把新 PAT 发给 agent，由 agent 覆盖 config
-- 删除配置：删除 `~/.config/gitea-skills/config`
+一次注册多套环境，把多组三元组发给 agent 即可：
 
-也可自行 `export GITEA_HOST=...` 与 `export GITEA_ACCESS_TOKEN=...`（direnv、shell rc 等）。
+```
+profile: quantpi  host: https://gitea.quantpi.cn                  token: <PAT1>
+profile: pe        host: https://gitea.pe.qpalpha.com             token: <PAT2>
+profile: public    host: https://gitea-public.pe.qpalpha.com:8443  token: <PAT3>
+```
+
+- 新增 profile：把新的 name + host + PAT 发给 agent
+- 更新某 profile 的 token：告诉 agent 覆盖哪个 profile
+- 切换非 git 上下文的默认：`./setup.sh use <name>`（克隆了仓库的话）或让 agent 重写 `default-profile`
+- 删除单个 profile：删除 `~/.config/gitea-skills/profiles/<name>`
+- 全部删除：删除 `~/.config/gitea-skills/`
+
+也可自行 `export GITEA_HOST=...` 与 `export GITEA_ACCESS_TOKEN=...`（direnv、shell rc、CI）——这会绕过所有 profile，优先级最高。
 
 ### 方式 B（克隆仓库后，可选）
 
 ```bash
-bash setup.sh
+bash setup.sh             # 交互式多 profile 管理器（list / add / use / remove）
+bash setup.sh list        # 列出所有 profile（默认带 * 标记）
+bash setup.sh add pe      # 新增 profile（仍交互输入 host + token）
+bash setup.sh use pe       # 把 pe 设为非 git 上下文的默认
+bash setup.sh remove pe    # 删除 profile
+bash setup.sh --uninstall  # 删除整个配置目录
 ```
 
-交互式输入 host 和 PAT，验证后写入同一 config 路径。也可继续用「发给 agent 代写」的方式。
+`setup.sh` 写 profile 时会做连通性校验。也可继续用「发给 agent 代写」的方式。
 
-- 更新 token：`bash setup.sh` 或发给 agent
-- 删除配置：`bash setup.sh --uninstall` 或手动删除 config 文件
-
-完整说明（自签 CA / 反向代理 path 前缀 / scope 选择）见 [gitea-shared/SKILL.md](gitea-shared/SKILL.md)。
+完整说明（加载顺序、自签 CA / 反向代理 path 前缀 / scope 选择 / 从旧单实例 config 迁移）见 [gitea-shared/SKILL.md](gitea-shared/SKILL.md)。
 
 ## 用法示例
 
