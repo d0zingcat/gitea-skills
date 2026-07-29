@@ -1,7 +1,7 @@
 ---
 name: gitea-shared
-version: 0.1.3
-description: "Gitea REST API shared foundation (for self-hosted Gitea instances): host and token configuration, curl calling conventions, self-signed/internal TLS, pagination, error handling, version compatibility, security rules. All gitea-* skills depend on these conventions before calling the API. Use when the user first needs to operate a self-hosted Gitea instance, configure GITEA_HOST/GITEA_ACCESS_TOKEN, hit SSL certificate errors, 401/403/404, needs batch pagination, or wants to write a curl call to Gitea."
+version: 0.2.0
+description: "Gitea REST API shared foundation (for self-hosted Gitea instances): multi-profile host/token configuration with git-remote auto-match, curl calling conventions, self-signed/internal TLS, pagination, error handling, version compatibility, security rules. All gitea-* skills depend on these conventions before calling the API. Use when the user first needs to operate a self-hosted Gitea instance, configure GITEA_HOST/GITEA_ACCESS_TOKEN or multiple profiles, hit SSL certificate errors, 401/403/404, needs batch pagination, or wants to write a curl call to Gitea."
 ---
 
 # Gitea CLI Shared Rules (for self-hosted instances)
@@ -18,17 +18,47 @@ This skill is the common prerequisite for all `gitea-*` skills. Every domain ski
 
 ## Configuration
 
-Provide `GITEA_HOST` and `GITEA_ACCESS_TOKEN` via the `~/.config/gitea-skills/config` file or environment variables.
+gitea-skills supports **multiple named profiles** for users with more than one Gitea instance (e.g. prod / staging / public mirror). Each profile stores its own `GITEA_HOST` + `GITEA_ACCESS_TOKEN` pair. The agent picks the right profile per operation via a 5-level fallback (see "Load order" below).
+
+Config lives under `${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/`:
+
+```
+gitea-skills/
+├── profiles/
+│   ├── quantpi         # one file per profile: GITEA_HOST + GITEA_ACCESS_TOKEN
+│   ├── pe
+│   └── public
+├── default-profile     # (optional) one line: profile name to use when nothing else applies
+└── config              # (legacy) single-instance config, kept for backward compatibility
+```
+
+Profile names are free-form (lowercase, no slashes). A common convention is to derive them from the host's first label: `gitea.quantpi.cn` → `quantpi`, `gitea.pe.qpalpha.com` → `pe`, `gitea-public.pe.qpalpha.com` → `public`.
 
 ### Installation methods and config paths
 
 | Installation method | Local `setup.sh` available? | Recommended config approach |
 |----------|----------------------|--------------|
-| `npx skills add d0zingcat/gitea-skills` (common) | **No** (only symlinks skill directories) | User sends host + PAT to agent → agent writes config with the **Write tool** |
-| Manual symlink after `git clone` | **Yes** | Run `bash setup.sh`, or have agent write config |
-| User exports env vars themselves | N/A | `export GITEA_HOST=...` / `GITEA_ACCESS_TOKEN=...` (direnv, shell rc, CI) |
+| `npx skills add d0zingcat/gitea-skills` (common) | **No** (only symlinks skill directories) | User sends host + PAT to agent → agent writes profile files with the **Write tool** |
+| Manual symlink after `git clone` | **Yes** | Run `bash setup.sh` (interactive multi-profile manager), or have agent write profiles |
+| User exports env vars themselves | N/A | `export GITEA_HOST=...` / `GITEA_ACCESS_TOKEN=...` (direnv, shell rc, CI) — bypasses profiles entirely |
 
 **`npx skills add` does not install the repo's `setup.sh` on the user's machine**, so documentation and agent behavior must not assume the user can "run `bash setup.sh`" unless you have confirmed they cloned the full repository.
+
+### Load order
+
+Before every Gitea API call, the agent runs the loader snippet (see "curl calling conventions" below). The loader sets `GITEA_HOST` + `GITEA_ACCESS_TOKEN` using the first source that resolves, in this priority:
+
+1. **Existing env vars** — if both `GITEA_HOST` and `GITEA_ACCESS_TOKEN` are already exported (CI, direnv, manual `export`), use them as-is. This is the backward-compatible path and the highest-priority override.
+2. **`GITEA_PROFILE=<name>`** — if set, source `profiles/<name>`. If the named profile does not exist, **stop and report** (do not silently fall through).
+3. **git remote auto-match** — if the current directory is a git repo with an `origin` remote, extract the host from the remote URL and match it against every profile's `GITEA_HOST` (scheme and port stripped on both sides). First match wins. This lets the agent pick the right environment automatically when operating on a cloned repo.
+4. **`default-profile` file** — if it exists and names a valid profile, source that profile. Use this to set a global default for non-git contexts.
+5. **Legacy single-instance `config`** — if `default-profile` is absent or invalid and the old `config` file exists, source it (backward compatibility for users who have not migrated).
+6. **None of the above** — print an error and stop. Ask the user for host + PAT and write a profile (see "First-time configuration").
+
+Notes:
+- Levels 1 and 2 are explicit; 3 is automatic; 4–5 are fallbacks.
+- The loader only re-sources if `GITEA_HOST`/`GITEA_ACCESS_TOKEN` are still empty after a level — so a matched profile at level 3 short-circuits 4 and 5.
+- To force a specific environment for one command without changing defaults, prefix the command: `GITEA_PROFILE=pe <curl ...>` (the agent runs the loader in the same bash block, so this works).
 
 ### Credential handling rules (audit requirements)
 
@@ -36,44 +66,63 @@ Provide `GITEA_HOST` and `GITEA_ACCESS_TOKEN` via the `~/.config/gitea-skills/co
 
 Allowed approaches (in priority order):
 
-1. **Preferred (`npx skills add` and most scenarios)**: Ask the user for `GITEA_HOST` and PAT → use the editor's **Write tool** to write `~/.config/gitea-skills/config` (first `mkdir -p` with directory `chmod 700`, file `chmod 600`), reading host/token from the user's message. **Do not** put the token in a logged shell command via `echo`, `cat <<EOF`, or `curl -H "Authorization: token ..."`
-2. **Alternative**: User runs `export GITEA_HOST=...` and `export GITEA_ACCESS_TOKEN=...` themselves
+1. **Preferred (`npx skills add` and most scenarios)**: Ask the user for `GITEA_HOST` and PAT (and a profile name if they have multiple) → use the editor's **Write tool** to write `~/.config/gitea-skills/profiles/<name>` (first `mkdir -p` with directory `chmod 700`, file `chmod 600`), reading host/token from the user's message. **Do not** put the token in a logged shell command via `echo`, `cat <<EOF`, or `curl -H "Authorization: token ..."`
+2. **Alternative**: User runs `export GITEA_HOST=...` and `export GITEA_ACCESS_TOKEN=...` themselves (bypasses profiles; useful in CI)
 3. **Optional (only when the user has cloned the full repo and `setup.sh` exists locally)**: Guide the user to run `bash setup.sh` locally (interactive hidden input; token does not pass through chat logs)
 
-When verifying connectivity, the token **must only** be used via `source` of the written config or an already-exported `${GITEA_ACCESS_TOKEN}`.
+When verifying connectivity, the token **must only** be used via `source` of the written profile (or the loader snippet) or an already-exported `${GITEA_ACCESS_TOKEN}`.
 
 ### First-time configuration
 
-When missing configuration is detected, the agent should:
-1. Explain that `GITEA_HOST` and a PAT (Personal Access Token) are required
-2. **Ask the user** for the instance URL and token (the user may provide them directly in chat; do not ask the user to run a script that does not exist locally)
+When the loader reports missing configuration (no env vars, no profiles, no legacy `config`), the agent should:
+1. Explain that `GITEA_HOST` and a PAT (Personal Access Token) are required, and that the user can register multiple profiles (one per Gitea instance)
+2. **Ask the user** for: a profile name (suggest deriving from the host's first label, e.g. `quantpi` for `gitea.quantpi.cn`), the instance URL, and the token. The user may provide them directly in chat; do not ask the user to run a script that does not exist locally
 3. **Remind how to generate a token**: In the Gitea web UI `Settings → Applications → Generate New Token`, or open **`{GITEA_HOST}/user/settings/applications`** directly (`{GITEA_HOST}` is the instance root URL without a trailing `/`). If the user has not provided a host yet, ask for the instance URL first, then give that link
-4. After receiving host + token, use the **Write tool** to write `~/.config/gitea-skills/config` (format below), then `source` the config and verify with `/api/v1/version` and `/api/v1/user`
-5. **Do not** paste the token literally in verification curl commands
-6. Only when you have confirmed the user has the full repo locally may you additionally suggest `bash setup.sh` as an alternative
+4. After receiving name + host + token, use the **Write tool** to write `~/.config/gitea-skills/profiles/<name>` (format below), then run the loader snippet and verify with `/api/v1/version` and `/api/v1/user`
+5. If this is the user's first profile, also write `~/.config/gitea-skills/default-profile` with the profile name as its single line, so non-git contexts have a default
+6. **Do not** paste the token literally in verification curl commands
+7. To add more profiles later, repeat steps 2–4 with a different name
+8. Only when you have confirmed the user has the full repo locally may you additionally suggest `bash setup.sh` as an alternative
 
-**Agent config write steps** (Write tool; do not echo token in shell):
+**Agent profile write steps** (Write tool; do not echo token in shell):
 
-1. Ensure the directory exists: `~/.config/gitea-skills/` (permissions `700`)
-2. Write `~/.config/gitea-skills/config` with the Write tool (permissions `600`), content per format below, filling in the user-provided host (strip trailing `/`) and token
-3. In shell, only `source` that file for connectivity verification; never echo/print the token
+1. Ensure the directory exists: `~/.config/gitea-skills/profiles/` (permissions `700` on `~/.config/gitea-skills/`)
+2. Write `~/.config/gitea-skills/profiles/<name>` with the Write tool (permissions `600`), content per format below, filling in the user-provided host (strip trailing `/`) and token
+3. If `default-profile` does not exist yet, write it with the profile name as its only line
+4. In shell, run the loader snippet (see "curl calling conventions") to source the profile and verify connectivity; never echo/print the token
 
-Config file format (generated by Write tool or `setup.sh`; do not echo token in shell):
+Profile file format (generated by Write tool or `setup.sh`; do not echo token in shell):
 
 ```bash
-# gitea-skills config — do not commit
+# gitea-skills profile: <name> — do not commit
 : "${GITEA_HOST:=https://gitea.example.com}"
 : "${GITEA_ACCESS_TOKEN:=<written by Write tool or setup.sh; must not appear in shell command line>}"
 export GITEA_HOST GITEA_ACCESS_TOKEN
 ```
 
-### Updating the token
+`default-profile` file format (single line, no trailing newline required):
 
-Ask the user for a new PAT; the agent overwrites `~/.config/gitea-skills/config` with the **Write tool**; or the user exports it themselves. Only suggest `bash setup.sh` when `setup.sh` exists locally.
+```
+quantpi
+```
+
+### Migrating from a legacy single-instance config
+
+If `~/.config/gitea-skills/config` exists but `profiles/` is empty, the agent may offer to migrate:
+1. Read the existing `config` (it is already a valid profile body)
+2. Ask the user for a profile name (or suggest one derived from the `GITEA_HOST` in the file)
+3. Write `profiles/<name>` with the same content, then write `default-profile` pointing at `<name>`
+4. Keep the old `config` file in place — the loader still falls back to it, so deletion is optional
+
+### Updating a profile's token
+
+Ask the user for a new PAT and **which profile** to update (if they have more than one); the agent overwrites `~/.config/gitea-skills/profiles/<name>` with the **Write tool**; or the user exports env vars themselves. Only suggest `bash setup.sh` when `setup.sh` exists locally.
 
 ### Removing configuration
 
-Delete `~/.config/gitea-skills/config` (and the empty directory if applicable). If the user cloned the repo, they may also run `bash setup.sh --uninstall`.
+- Remove one profile: delete `~/.config/gitea-skills/profiles/<name>`; if it was the `default-profile` target, either repoint `default-profile` to another profile or delete the `default-profile` file
+- Remove all profiles: delete the `~/.config/gitea-skills/` directory (or run `bash setup.sh --uninstall` if the repo is cloned locally)
+- Legacy single-instance: delete `~/.config/gitea-skills/config` to disable the fallback
 
 ### PAT scope notes
 
@@ -126,15 +175,38 @@ export CURL_CA_BUNDLE="$HOME/.config/internal-ca.crt"
 
 ## curl calling conventions
 
-**Important**: Before each Gitea-related bash command, load the config file in the same bash block. This ensures `GITEA_HOST` and `GITEA_ACCESS_TOKEN` are available (even if the parent shell did not export them):
+**Important**: Before each Gitea-related bash command, run the loader in the same bash block. The loader resolves `GITEA_HOST` and `GITEA_ACCESS_TOKEN` via the 5-level fallback documented in "Load order" above (env vars → `GITEA_PROFILE` → git remote match → `default-profile` → legacy `config`):
 
 ```bash
 # ── Load gitea-skills config (run before every Gitea operation) ──
-_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
-[ -f "$_cfg" ] && . "$_cfg"
+_d="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills"
+if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
+  if [ -n "${GITEA_PROFILE:-}" ]; then
+    if [ -f "$_d/profiles/$GITEA_PROFILE" ]; then
+      . "$_d/profiles/$GITEA_PROFILE"
+    else
+      echo "ERROR: GITEA_PROFILE='$GITEA_PROFILE' not found at $_d/profiles/$GITEA_PROFILE" >&2
+      exit 1
+    fi
+  elif _remote=$(git -C "${PWD:-.}" remote get-url origin 2>/dev/null); then
+    _rh=$(printf '%s' "$_remote" | sed -E 's#(ssh://)?[^@]*@##; s#^[a-z]+://##; s#[:/].*##')
+    for _p in "$_d"/profiles/*; do
+      [ -f "$_p" ] || continue
+      _ph=$(grep -E 'GITEA_HOST:=' "$_p" | head -1 | sed -E 's#.*GITEA_HOST:=##; s#"##g; s#^[a-z]+://##; s#[:/}].*##')
+      [ "$_rh" = "$_ph" ] && { . "$_p"; break; }
+    done
+  fi
+  if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
+    if [ -f "$_d/default-profile" ] && [ -f "$_d/profiles/$(cat "$_d/default-profile")" ]; then
+      . "$_d/profiles/$(cat "$_d/default-profile")"
+    elif [ -f "$_d/config" ]; then
+      . "$_d/config"
+    fi
+  fi
+fi
 if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
   echo "ERROR: GITEA_HOST or GITEA_ACCESS_TOKEN is not set." >&2
-  echo "Provide the instance URL and PAT to the agent; the agent will write ~/.config/gitea-skills/config" >&2
+  echo "Provide a profile name + instance URL + PAT to the agent; the agent will write ~/.config/gitea-skills/profiles/<name>" >&2
   if [ -n "${GITEA_HOST:-}" ]; then
     echo "Generate token: ${GITEA_HOST}/user/settings/applications" >&2
   fi
@@ -142,21 +214,41 @@ if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
 fi
 ```
 
-If the config file does not exist and env vars are unset, the snippet above fails immediately. **When the agent sees this error, stop the current operation**: ask the user for `GITEA_HOST` and PAT, write config with the **Write tool** (see "Configuration" above), verify after `source`; if `GITEA_HOST` is known, also provide **`{GITEA_HOST}/user/settings/applications`**; **do not** default to having the user run `bash setup.sh` (with `npx skills add`, that script usually is not present locally).
+If no source resolves, the snippet above fails immediately. **When the agent sees this error, stop the current operation**: ask the user for a profile name + `GITEA_HOST` + PAT, write `profiles/<name>` with the **Write tool** (see "Configuration" above), verify by re-running the loader; if `GITEA_HOST` is known, also provide **`{GITEA_HOST}/user/settings/applications`**; **do not** default to having the user run `bash setup.sh` (with `npx skills add`, that script usually is not present locally).
 
-Then run curl. Full example:
+To target a specific environment for one command, prefix it with `GITEA_PROFILE=<name>` (the loader runs in the same bash block, so it picks up the override):
 
 ```bash
-_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills/config"
-[ -f "$_cfg" ] && . "$_cfg"
+GITEA_PROFILE=pe bash -c '<loader snippet above> && curl ...'
+```
+
+Or, for a one-off against an instance not in any profile, export the vars yourself (highest priority, skips the loader entirely):
+
+```bash
+GITEA_HOST=https://other.example.com GITEA_ACCESS_TOKEN=<pat> bash -c '<loader snippet above> && curl ...'
+```
+
+Then run curl. Full example (loader + curl in the same block):
+
+```bash
+_d="${XDG_CONFIG_HOME:-$HOME/.config}/gitea-skills"
 if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
-  echo "ERROR: GITEA_HOST or GITEA_ACCESS_TOKEN is not set." >&2
-  echo "Provide the instance URL and PAT to the agent; the agent will write ~/.config/gitea-skills/config" >&2
-  if [ -n "${GITEA_HOST:-}" ]; then
-    echo "Generate token: ${GITEA_HOST}/user/settings/applications" >&2
+  if [ -n "${GITEA_PROFILE:-}" ]; then
+    [ -f "$_d/profiles/$GITEA_PROFILE" ] && . "$_d/profiles/$GITEA_PROFILE" || { echo "ERROR: profile $GITEA_PROFILE not found" >&2; exit 1; }
+  elif _remote=$(git -C "${PWD:-.}" remote get-url origin 2>/dev/null); then
+    _rh=$(printf '%s' "$_remote" | sed -E 's#(ssh://)?[^@]*@##; s#^[a-z]+://##; s#[:/].*##')
+    for _p in "$_d"/profiles/*; do
+      [ -f "$_p" ] || continue
+      _ph=$(grep -E 'GITEA_HOST:=' "$_p" | head -1 | sed -E 's#.*GITEA_HOST:=##; s#"##g; s#^[a-z]+://##; s#[:/}].*##')
+      [ "$_rh" = "$_ph" ] && { . "$_p"; break; }
+    done
   fi
-  exit 1
+  if [ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ]; then
+    [ -f "$_d/default-profile" ] && [ -f "$_d/profiles/$(cat "$_d/default-profile")" ] && . "$_d/profiles/$(cat "$_d/default-profile")"
+    [ -z "${GITEA_HOST:-}" ] && [ -f "$_d/config" ] && . "$_d/config"
+  fi
 fi
+[ -z "${GITEA_HOST:-}" ] || [ -z "${GITEA_ACCESS_TOKEN:-}" ] && { echo "ERROR: GITEA_HOST/GITEA_ACCESS_TOKEN not set" >&2; exit 1; }
 
 curl -fsSL \
   -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
