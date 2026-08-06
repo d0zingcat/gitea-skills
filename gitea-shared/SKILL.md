@@ -273,15 +273,84 @@ Key points:
 
 ### Write operation template
 
+**Prefer building JSON with `jq` and feeding it to curl over stdin** so the body never passes through shell parsing. This is the only safe pattern when any field contains markdown, backticks, quotes, or other user content:
+
 ```bash
-curl -fsSL \
-  -X POST \
+jq -n --arg title "Add feature X" --arg body "$BODY" '{
+  title: $title,
+  body: $body
+}' | curl -fsSL -X POST \
   -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"key":"value"}' \
+  -d @- \
   "${GITEA_HOST}/api/v1/<endpoint>"
 ```
+
+Key points:
+
+- `jq -n` builds JSON from a jq program (no input file).
+- `--arg name value` binds a string variable; `--argjson name value` binds a JSON literal (numbers, arrays, booleans). `--rawfile name path` reads a file's bytes into a string variable (no shell interpolation, no escaping needed).
+- `curl -d @-` reads the request body from stdin. Combined with a jq pipe, JSON with backticks/quotes/newlines is delivered byte-for-byte and never re-parsed by the shell.
+- For writes, add `-X POST/PUT/PATCH/DELETE` and `-H "Content-Type: application/json"`.
+
+Inline `curl -d '{"key":"value"}'` is acceptable **only for trivial static JSON with no user/markdown content** (e.g. `{"state":"closed"}`). Never inline a body that came from a file, a shell variable, or chat — backticks and quotes will be mangled or eaten.
+
+### Safe body construction (PR / issue / comment bodies)
+
+PR and issue bodies are markdown and routinely contain backticks (code spans like `` `appendTurn` ``), quotes, and newlines. The shell treats backticks as command substitution and double-quotes as string boundaries, so a body interpolated into `-d "..."` is silently truncated or corrupted. Always go through `jq`.
+
+**Body from a file** (recommended for long PR bodies written with the editor):
+
+```bash
+jq -n --rawfile body pr-body.md --arg title "Fix in-flight lock" --arg head "feat/lock" --arg base "main" '{
+  title: $title,
+  body: $body,
+  head: $head,
+  base: $base
+}' | curl -fsSL -X POST \
+  -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d @- \
+  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls"
+```
+
+`--rawfile` reads the file as a raw string (preserving newlines and backticks) and `jq` performs JSON escaping when emitting.
+
+**Body from a shell variable** (when the agent composed the body inline):
+
+```bash
+BODY='## Summary
+
+Fix the race where `appendTurn` runs after the stream finishes.
+- `messageIndex` is now pre-registered
+- in-flight lock guards concurrent replies'
+
+jq -n --arg body "$BODY" --arg title "Fix in-flight lock" '{
+  title: $title,
+  body: $body
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls"
+```
+
+The single-quoted `BODY='...'` keeps backticks literal at assignment time; `--arg body "$BODY"` then hands the value to jq, which escapes it for JSON. No shell parsing happens between the two steps.
+
+**Anti-patterns — do NOT do any of these:**
+
+```bash
+# WRONG: backtick command substitution eats every backtick in the file as a nested command
+curl -d "{ \"body\": \"$(cat pr-body.md)\" }" ...
+
+# WRONG: $BODY inside double quotes is fine for the shell, but no JSON escaping —
+# quotes/newlines in the body break the JSON and the API returns 422
+curl -d "{ \"body\": \"$BODY\" }" ...
+
+# WRONG: string concatenation across quote contexts — same JSON-escaping problem,
+# and very easy to get the quoting wrong
+curl -d '{ "body": "'"$BODY"'" }' ...
+```
+
+All three silently corrupt markdown bodies. Use the `jq -n | curl -d @-` pipe instead.
 
 ### jq filtering recommendations
 

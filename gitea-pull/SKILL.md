@@ -53,19 +53,34 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}" \
 ## Create Pull Request
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{
-    "title": "Add feature X",
-    "body": "## Summary\n...",
-    "head": "feat/x",
-    "base": "main",
-    "labels": [3],
-    "milestone": 1,
-    "reviewers": ["alice"],
-    "team_reviewers": ["frontend"]
-  }' \
+jq -n --arg title "Add feature X" --arg body "## Summary\n..." \
+     --arg head "feat/x" --arg base "main" '{
+  title: $title,
+  body: $body,
+  head: $head,
+  base: $base,
+  labels: [3],
+  milestone: 1,
+  reviewers: ["alice"],
+  team_reviewers: ["frontend"]
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls"
 ```
+
+**Body from a file** (recommended for long PR bodies with markdown/backticks — see `gitea-shared` "Safe body construction"):
+
+```bash
+jq -n --rawfile body pr-body.md --arg title "Fix in-flight lock" \
+     --arg head "feat/lock" --arg base "main" '{
+  title: $title,
+  body: $body,
+  head: $head,
+  base: $base
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls"
+```
+
+`--rawfile` reads the markdown file verbatim and `jq` performs JSON escaping; backticks and newlines in the body survive intact.
 
 Field reference (from swagger `CreatePullRequestOption`):
 
@@ -88,8 +103,11 @@ Cross-repo PR `head` format: `fork-owner:branch-name`.
 ## Edit Pull Request
 
 ```bash
-curl -fsSL -X PATCH -H "Content-Type: application/json" \
-  -d '{"title":"Add feature X (rev2)","body":"updated","base":"develop"}' \
+jq -n --arg title "Add feature X (rev2)" --arg body "updated" --arg base "develop" '{
+  title: $title,
+  body: $body,
+  base: $base
+}' | curl -fsSL -X PATCH -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}"
 ```
 
@@ -101,12 +119,10 @@ Toggle draft status: add or remove the `WIP: ` prefix in `title`.
 
 ```bash
 # Close
-curl -fsSL -X PATCH -H "Content-Type: application/json" \
-  -d '{"state":"closed"}' \
+jq -n '{state:"closed"}' | curl -fsSL -X PATCH -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}"
 # Reopen
-curl -fsSL -X PATCH -H "Content-Type: application/json" \
-  -d '{"state":"open"}' \
+jq -n '{state:"open"}' | curl -fsSL -X PATCH -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}"
 ```
 
@@ -156,13 +172,13 @@ Optional query:
 **High-risk operation — confirm user intent before merging.**
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{
-    "Do": "merge",
-    "MergeTitleField": "Add feature X (#42)",
-    "MergeMessageField": "Closes #41",
-    "delete_branch_after_merge": true
-  }' \
+jq -n --arg Do "merge" --arg MergeTitleField "Add feature X (#42)" \
+     --arg MergeMessageField "Closes #41" '{
+  Do: $Do,
+  MergeTitleField: $MergeTitleField,
+  MergeMessageField: $MergeMessageField,
+  delete_branch_after_merge: true
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/merge"
 ```
 
@@ -219,17 +235,19 @@ Optional `?style=merge` or `?style=rebase`. Default is merge.
 ### Add Reviewers
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"reviewers":["alice","bob"],"team_reviewers":["frontend"]}' \
+jq -n --argjson reviewers '["alice","bob"]' --argjson team_reviewers '["frontend"]' '{
+  reviewers: $reviewers,
+  team_reviewers: $team_reviewers
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/requested_reviewers"
 ```
 
 ### Remove Reviewers
 
 ```bash
-curl -fsSL -X DELETE -H "Content-Type: application/json" \
-  -d '{"reviewers":["alice"]}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/requested_reviewers"
+jq -n --argjson reviewers '["alice"]' '{reviewers:$reviewers}' \
+  | curl -fsSL -X DELETE -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/requested_reviewers"
 ```
 
 ## Review
@@ -261,16 +279,16 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REV
 Can include all inline comments in one request. `event` determines the state:
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{
-    "commit_id": "abc123...",
-    "body": "Overall LGTM, two small nits.",
-    "event": "APPROVED",
-    "comments": [
-      {"path":"src/foo.go","old_position":12,"body":"typo here"},
-      {"path":"src/foo.go","new_position":34,"body":"can be simpler"}
-    ]
-  }' \
+jq -n --arg commit_id "abc123..." --arg body "Overall LGTM, two small nits." \
+     --arg event "APPROVED" '{
+  commit_id: $commit_id,
+  body: $body,
+  event: $event,
+  comments: [
+    {path:"src/foo.go", old_position:12, body:"typo here"},
+    {path:"src/foo.go", new_position:34, body:"can be simpler"}
+  ]
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews"
 ```
 
@@ -291,9 +309,9 @@ Either `old_position` or `new_position` is sufficient; line numbers come from pa
 If a PENDING review was created first (`event` omitted), submit later:
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"event":"APPROVED","body":"Final approval"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}"
+jq -n --arg event "APPROVED" --arg body "Final approval" '{event:$event, body:$body}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}"
 ```
 
 ### Delete Review
@@ -308,9 +326,9 @@ curl -fsSL -X DELETE \
 Dismiss another user's review (invalidates APPROVED / REQUEST_CHANGES; often used with branch protection):
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"message":"Outdated due to new commits","priors":false}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}/dismissals"
+jq -n --arg message "Outdated due to new commits" '{message:$message, priors:false}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${N}/reviews/${REVIEW_ID}/dismissals"
 ```
 
 ### Undo Dismiss
@@ -344,24 +362,25 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/commits/${HEAD_SHA}/stat
 
 ```bash
 # 1. Create PR
-PR_NUM=$(curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"title":"feat: x","body":"...","head":"feat/x","base":"main"}' \
+PR_NUM=$(jq -n --arg title "feat: x" --arg body "..." --arg head "feat/x" --arg base "main" '{
+  title: $title, body: $body, head: $head, base: $base
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls" | jq -r '.number')
 
 # 2. Request review
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"reviewers":["alice"]}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/requested_reviewers"
+jq -n --argjson reviewers '["alice"]' '{reviewers:$reviewers}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/requested_reviewers"
 
 # 3. (Reviewer) Approve
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"event":"APPROVED","body":"LGTM"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/reviews"
+jq -n --arg event "APPROVED" --arg body "LGTM" '{event:$event, body:$body}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/reviews"
 
 # 4. Merge + delete branch
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"Do":"squash","delete_branch_after_merge":true}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/merge"
+jq -n --arg Do "squash" '{Do:$Do, delete_branch_after_merge:true}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${PR_NUM}/merge"
 ```
 
 ### Sync PR Branch with Base

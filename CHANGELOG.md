@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`gitea-shared` / `gitea-pull` / `gitea-issue`**: PR/issue/comment bodies containing markdown backticks were silently eaten by shell interpolation when an agent embedded a body file or variable into `curl -d '{...}'`. Rewrote the write-operation template to recommend the `jq -n --arg/--rawfile ... | curl -d @-` pipe (jq builds+escapes JSON, curl reads the body from stdin so it never passes through shell parsing), added a "Safe body construction" section with file/variable examples and three explicit anti-patterns, and converted every create/edit/merge/review/comment/label/reaction example in `gitea-pull` and `gitea-issue` to the pipe form. `examples/02-create-issue-and-label.md` and `examples/03-merge-pr-with-confirmation.md` updated for consistency (the latter also drops the fragile `'"${HEAD_SHA}"'` string concatenation in favor of `--arg head_commit_id`).
+
 ## [0.2.0] – 2026-07-28
 
 ### Added

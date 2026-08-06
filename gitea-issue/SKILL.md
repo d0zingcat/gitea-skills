@@ -54,17 +54,19 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}" \
 ## Create issue
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{
-    "title": "Bug: foo crashes",
-    "body": "Steps to reproduce ...",
-    "assignees": ["alice"],
-    "labels": [3, 7],
-    "milestone": 1,
-    "ref": "main"
-  }' \
+jq -n --arg title "Bug: foo crashes" --arg body "Steps to reproduce ..." \
+     --argjson labels '[3,7]' --argjson milestone 1 --arg ref "main" '{
+  title: $title,
+  body: $body,
+  assignees: ["alice"],
+  labels: $labels,
+  milestone: $milestone,
+  ref: $ref
+}' | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues"
 ```
+
+For long issue bodies with markdown/backticks, use `--rawfile body issue-body.md` (see `gitea-shared` "Safe body construction").
 
 Field reference:
 
@@ -86,12 +88,11 @@ To get label/milestone IDs first, see the `gitea-label` and `gitea-milestone` sk
 `PATCH` updates only the fields you provide.
 
 ```bash
-curl -fsSL -X PATCH -H "Content-Type: application/json" \
-  -d '{
-    "title": "Bug: foo crashes (root cause: race)",
-    "state": "closed",
-    "assignees": ["alice","bob"]
-  }' \
+jq -n --arg title "Bug: foo crashes (root cause: race)" --argjson assignees '["alice","bob"]' '{
+  title: $title,
+  state: "closed",
+  assignees: $assignees
+}' | curl -fsSL -X PATCH -H "Content-Type: application/json" -d @- \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}"
 ```
 
@@ -109,9 +110,9 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments" \
 ### Add comment
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"body":"Looking into this now."}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments"
+jq -n --arg body "Looking into this now." '{body:$body}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments"
 ```
 
 ### Edit comment
@@ -119,9 +120,9 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
 Note: the endpoint uses the comment ID (not the issue number), under the repository path:
 
 ```bash
-curl -fsSL -X PATCH -H "Content-Type: application/json" \
-  -d '{"body":"Updated comment text"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}"
+jq -n --arg body "Updated comment text" '{body:$body}' \
+  | curl -fsSL -X PATCH -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}"
 ```
 
 ### Delete comment
@@ -144,17 +145,17 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ### Add labels
 
 ```bash
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"labels":[3,7]}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
+jq -n --argjson labels '[3,7]' '{labels:$labels}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ```
 
 ### Replace all labels
 
 ```bash
-curl -fsSL -X PUT -H "Content-Type: application/json" \
-  -d '{"labels":[3,7]}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
+jq -n --argjson labels '[3,7]' '{labels:$labels}' \
+  | curl -fsSL -X PUT -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ```
 
 ### Remove one label
@@ -187,14 +188,14 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions" \
   | jq '[.[] | {user: .user.login, content, created_at}]'
 
 # add (repeated POST with same content by the same user is idempotent)
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"content":"+1"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions"
+jq -n --arg content "+1" '{content:$content}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions"
 
 # delete (your own)
-curl -fsSL -X DELETE -H "Content-Type: application/json" \
-  -d '{"content":"+1"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions"
+jq -n --arg content "+1" '{content:$content}' \
+  | curl -fsSL -X DELETE -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/reactions"
 ```
 
 ### Comment reactions
@@ -202,9 +203,9 @@ curl -fsSL -X DELETE -H "Content-Type: application/json" \
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}/reactions"
 
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"content":"heart"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}/reactions"
+jq -n --arg content "heart" '{content:$content}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/comments/${COMMENT_ID}/reactions"
 ```
 
 ## All comments in a repository
@@ -224,26 +225,26 @@ Optional `since` / `before` time filters.
 
 ```bash
 # 1. create
-NUM=$(curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"title":"Bug: x","body":"..."}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues" | jq -r '.number')
+NUM=$(jq -n --arg title "Bug: x" --arg body "..." '{title:$title, body:$body}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues" | jq -r '.number')
 # 2. add labels
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"labels":[3]}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${NUM}/labels"
+jq -n --argjson labels '[3]' '{labels:$labels}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${NUM}/labels"
 ```
 
 ### Close and comment
 
 ```bash
 # comment
-curl -fsSL -X POST -H "Content-Type: application/json" \
-  -d '{"body":"Closing as fixed in #42"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments"
+jq -n --arg body "Closing as fixed in #42" '{body:$body}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/comments"
 # close
-curl -fsSL -X PATCH -H "Content-Type: application/json" \
-  -d '{"state":"closed"}' \
-  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}"
+jq -n '{state:"closed"}' \
+  | curl -fsSL -X PATCH -H "Content-Type: application/json" -d @- \
+    "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}"
 ```
 
 ## Permission notes

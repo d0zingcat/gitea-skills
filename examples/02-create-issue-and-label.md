@@ -26,14 +26,14 @@ FE_ID=$(echo "$LABELS_JSON" | jq -r '.[] | select(.name=="frontend") | .id')
 echo "bug=${BUG_ID}, frontend=${FE_ID}"
 
 # Step 2: create issue with labels in one shot
-curl -fsSL -X POST \
+jq -n --argjson b "$BUG_ID" --argjson f "$FE_ID" '{
+  title: "Login button unresponsive on Safari 17",
+  body: "Steps to reproduce ...",
+  labels: [$b, $f]
+}' | curl -fsSL -X POST \
   -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d "$(jq -n --argjson b "$BUG_ID" --argjson f "$FE_ID" '{
-    title: "Login button unresponsive on Safari 17",
-    body: "Steps to reproduce ...",
-    labels: [$b, $f]
-  }')" \
+  -d @- \
   "${GITEA_HOST}/api/v1/repos/team-a/web/issues" \
   | jq '{number, title, html_url}'
 ```

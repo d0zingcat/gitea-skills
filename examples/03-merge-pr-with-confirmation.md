@@ -44,16 +44,17 @@ If `state` is not `success`, ask the user whether to use `force_merge: true`.
 After explicit user confirmation:
 
 ```bash
-curl -fsSL -X POST \
+jq -n --arg Do "squash" --arg MergeTitleField "Add login flow (#42)" \
+     --arg MergeMessageField "Closes #41" --arg head_commit_id "$HEAD_SHA" '{
+  Do: $Do,
+  MergeTitleField: $MergeTitleField,
+  MergeMessageField: $MergeMessageField,
+  delete_branch_after_merge: true,
+  head_commit_id: $head_commit_id
+}' | curl -fsSL -X POST \
   -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "Do": "squash",
-    "MergeTitleField": "Add login flow (#42)",
-    "MergeMessageField": "Closes #41",
-    "delete_branch_after_merge": true,
-    "head_commit_id": "'"${HEAD_SHA}"'"
-  }' \
+  -d @- \
   "${GITEA_HOST}/api/v1/repos/team-a/web/pulls/42/merge"
 ```
 
