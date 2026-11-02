@@ -1,6 +1,6 @@
 ---
 name: gitea-repo
-version: 0.0.2
+version: 0.0.3
 description: "Gitea repository operations: list/create/fork repos, branch management, commit queries, file read/write, tags and releases, directory trees. Covers repos/branches/commits/contents/releases/tags/git/trees REST endpoints. Use when the user needs to list/create repos, fork, create/delete branches, read or edit files, query commits, create tags, publish releases, or browse repository directory structure on Gitea."
 ---
 
@@ -89,6 +89,8 @@ If `organization` is omitted, the fork goes under the current user; if `name` is
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/branches?page=1&limit=50" \
   | jq '[.[] | {name, commit_sha: .commit.id, protected}]'
 ```
+
+1.27+: `q=<substring>` filters by branch name on the server (`branches?q=release&limit=50`), so you don't have to page through every branch.
 
 ### Create Branch
 
@@ -300,6 +302,8 @@ curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/releases?page=1&limit=20
   | jq '[.[] | {id, tag_name, name, draft, prerelease, published_at}]'
 ```
 
+28.0+: `tag_filter` matches tag names with `*` wildcards, e.g. `releases?tag_filter=v2*` or `tag_filter=*rc*`. URL-encode the `*` as `%2A` if your shell or proxy mangles it.
+
 Optional filters: `draft=true|false`, `pre-release=true|false` (note the hyphen).
 
 ### Latest Release
@@ -374,6 +378,13 @@ curl -fsSL -X POST -H "Content-Type: application/json" \
 
 ```bash
 curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/compare/main...feat/x"
+
+# 28.0+: skip per-commit file lists and signature checks (much faster for long ranges)
+curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/compare/main...feat/x?files=false&verification=false" \
+  | jq '{total_commits, commits: [.commits[] | {sha: .sha[0:8], msg: (.commit.message | split("\n")[0])}]}'
+
+# 1.27+: raw unified diff or patch instead of JSON
+curl -fsSL "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/compare/main...feat/x?output=diff"
 ```
 
 ## Permissions / Scope Notes

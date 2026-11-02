@@ -293,6 +293,19 @@ case "$status" in
   *)   FAIL=$((FAIL+1)); ERRORS+=("runs unexpected $status"); red "  FAIL  runs endpoint unexpected HTTP $status";;
 esac
 
+
+echo
+echo "== gitea-project (path-only) =="
+# Projects API is 28.0+; older versions return 404.
+status=$(curl -sSL -o /dev/null -w '%{http_code}' \
+  -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
+  "${GITEA_HOST}/api/v1/repos/${ME}/${REPO}/projects?state=all")
+case "$status" in
+  200) PASS=$((PASS+1)); green "  PASS  repo projects endpoint reachable (HTTP 200)";;
+  404) yellow "  SKIP  projects endpoint not available on this version (HTTP 404)"; SKIP=$((SKIP+1));;
+  *)   FAIL=$((FAIL+1)); ERRORS+=("projects unexpected $status"); red "  FAIL  projects endpoint unexpected HTTP $status";;
+esac
+
 echo
 echo "============================================================"
 echo "Result: PASS=${PASS}  FAIL=${FAIL}  SKIP=${SKIP}"

@@ -1,7 +1,7 @@
 ---
 name: gitea-user
-version: 0.0.2
-description: "Gitea users and organizations: get the current user, list organizations for the current user, and get the Gitea instance version. Covers /user, /user/orgs, and /version endpoints. Use when you need to confirm Gitea login identity, see which user a token belongs to, list orgs you belong to, or confirm the Gitea version."
+version: 0.0.3
+description: "Gitea users and organizations: get the current user, list organizations for the current user, inspect the current token's scopes, and get the Gitea instance version. Covers /user, /user/orgs, /token, and /version endpoints. Use when you need to confirm Gitea login identity, see which user a token belongs to, list orgs you belong to, check which scopes the current token has, or confirm the Gitea version."
 ---
 
 # Gitea User & Version
@@ -47,7 +47,20 @@ curl -fsSL "${GITEA_HOST}/api/v1/version" \
   | jq '.version'
 ```
 
+Since 28.0 the version has no `1.` prefix: `28.2.0` follows `1.27.x`. Compare versions numerically (`sort -V`), never as strings or by assuming a `1.` major.
+
 No token required — the cheapest connectivity test endpoint.
+
+## Current token (1.27+)
+
+Check which scopes the token in use has, before an operation that might 403:
+
+```bash
+curl -fsSL "${GITEA_HOST}/api/v1/token" \
+  | jq '{name, scopes, last_used_at, user: .user.login}'
+```
+
+Never print `sha1` or `token_last_eight`. `DELETE /api/v1/token` revokes the token in use: only on explicit user request, and the profile must then be updated with a new PAT.
 
 ## Permission notes
 

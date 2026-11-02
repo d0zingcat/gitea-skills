@@ -1,12 +1,12 @@
 ---
 name: gitea-shared
-version: 0.2.0
+version: 0.2.1
 description: "Gitea REST API shared foundation (for self-hosted Gitea instances): multi-profile host/token configuration with git-remote auto-match, curl calling conventions, self-signed/internal TLS, pagination, error handling, version compatibility, security rules. All gitea-* skills depend on these conventions before calling the API. Use when the user first needs to operate a self-hosted Gitea instance, configure GITEA_HOST/GITEA_ACCESS_TOKEN or multiple profiles, hit SSL certificate errors, 401/403/404, needs batch pagination, or wants to write a curl call to Gitea."
 ---
 
 # Gitea CLI Shared Rules (for self-hosted instances)
 
-This skill is the common prerequisite for all `gitea-*` skills. Every domain skill (gitea-repo / gitea-issue / gitea-pull / gitea-actions / gitea-wiki / gitea-label / gitea-milestone / gitea-notification / gitea-search / gitea-user / gitea-package / gitea-timetracking) must follow the conventions here before making API calls.
+This skill is the common prerequisite for all `gitea-*` skills. Every domain skill (gitea-repo / gitea-issue / gitea-pull / gitea-actions / gitea-wiki / gitea-label / gitea-milestone / gitea-notification / gitea-search / gitea-user / gitea-package / gitea-timetracking / gitea-project) must follow the conventions here before making API calls.
 
 **Important premise**: This skill set is designed for **user self-hosted Gitea instances**. Compared to the public `gitea.com` instance, common differences include:
 
@@ -512,7 +512,15 @@ curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
 
 ## Version compatibility
 
-Gitea versions differ slightly on endpoints. Prefer `/api/v1/version` to confirm version, then choose paths. This document is calibrated to **Gitea 1.26.4**.
+Gitea versions differ slightly on endpoints. Prefer `/api/v1/version` to confirm version, then choose paths. This document is calibrated to **Gitea 28.2**.
+
+**Version numbering**: Gitea dropped the `1.` prefix at 28.0. The order is `… 1.25 → 1.26 → 1.27 → 28.0 → 28.1 → 28.2`. `/api/v1/version` returns e.g. `"28.2.0"`. When gating on version, compare with `sort -V` (or split and compare numerically) and never assume the major is `1`; "28 < 1.x" is wrong. Upgrading 1.26 → 28.x removed no REST endpoints, only added new ones.
+
+```bash
+v=$(curl -fsSL "${GITEA_HOST}/api/v1/version" | jq -r .version)
+# true when instance >= 28.0.0
+[ "$(printf '%s\n' 28.0.0 "$v" | sort -V | head -1)" = 28.0.0 ] && echo ">= 28"
+```
 
 | Symptom | Possible cause | Action |
 |------|----------|------|
@@ -521,7 +529,10 @@ Gitea versions differ slightly on endpoints. Prefer `/api/v1/version` to confirm
 | run `status` is `completed` not `success` | 1.25+ uses `status` + `conclusion` | Terminal state: use `conclusion` (`success`/`failure`/`cancelled`/`skipped`) |
 | `/actions/tasks` `status` is directly `success` | Legacy `ActionTask` model | Poll old path with single `status` field |
 | `/actions/runs/{id}/jobs` returns 404 | Gitea < 1.25 | Cannot list jobs via API; job logs often unavailable on 1.24.x (see `gitea-actions/KNOWN_ISSUES.md`) |
-| `/actions/runs/{id}/cancel` returns 404 | 1.26.4 still has no cancel API | Direct user to Web UI to cancel |
+| `/actions/runs/{id}/cancel`, `/approve`, `/logs` return 404 | Gitea < 28.0 | Direct user to Web UI |
+| `/actions/workflows/{id}/runs`, `/runs/{id}/attempts/{n}` return 404 | Gitea < 1.27 | Filter `/actions/runs` client-side by `path` |
+| `issues/{n}/assignees`, `pulls/{n}/comments/{id}/replies`, `/token` return 404 | Gitea < 1.27 | `PATCH` the full `assignees` list / post a new review comment / skip the scope check |
+| Unknown query param (e.g. `tag_filter`, branches `q`) silently ignored | Older version | Result is unfiltered; filter client-side with jq |
 | `/actions/runs/{id}/rerun` returns 404 | Gitea < 1.25 | Direct user to Web UI to rerun |
 | Field `pre-release` vs `prerelease` | Version inconsistency | Create release body uses `prerelease`; list query uses `pre-release` |
 | Missing keys in response | Older version lacks fields | Use jq `.field?` for tolerance |
@@ -548,6 +559,7 @@ Self-hosted admins can disable whole modules in `app.ini`; affected endpoints re
 | Actions (CI) | `[actions] ENABLED = false` | gitea-actions |
 | Packages | `[packages] ENABLED = false` | gitea-package |
 | Issue/PR Time Tracking | `[repository] DISABLE_REPO_UNITS` includes `repo.issues.time` or repo setting off | gitea-timetracking |
+| Projects | Repo setting "Projects" off, or `[repository] DISABLE_REPO_UNITS` includes `repo.projects` | gitea-project (repo-level boards) |
 | Entire Issue/PR | Disabled in repo settings | gitea-issue / gitea-pull |
 
 If a domain skill keeps 404 while owner/repo/token are correct, suspect a disabled module and ask the user to confirm with an administrator.

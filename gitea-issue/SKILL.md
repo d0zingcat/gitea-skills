@@ -1,7 +1,7 @@
 ---
 name: gitea-issue
-version: 0.0.2
-description: "Gitea Issue management: create/list/update issues, add/edit comments, read/write label associations. Covers /repos/{owner}/{repo}/issues endpoints. Use when you need to file issues on Gitea, view issue lists, add comments, change status, or add/remove labels on issues. Issues and PRs share the same number namespace; use the gitea-pull skill for PR-specific operations."
+version: 0.0.3
+description: "Gitea Issue management: create/list/update issues, add/edit comments, read/write label associations, add/remove assignees. Covers /repos/{owner}/{repo}/issues endpoints. Use when you need to file issues on Gitea, view issue lists, add comments, change status, or add/remove labels on issues. Issues and PRs share the same number namespace; use the gitea-pull skill for PR-specific operations."
 ---
 
 # Gitea Issue
@@ -171,6 +171,29 @@ curl -fsSL -X DELETE \
 curl -fsSL -X DELETE \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${N}/labels"
 ```
+
+## Assignees (1.27+)
+
+Add or remove assignees without overwriting the whole list (`PATCH` with `assignees` replaces it):
+
+```bash
+# Add
+jq -n --argjson a '["alice"]' '{assignees: $a}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+      "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${INDEX}/assignees" \
+  | jq '[.assignees[]?.login]'
+
+# Remove
+jq -n --argjson a '["alice"]' '{assignees: $a}' \
+  | curl -fsSL -X DELETE -H "Content-Type: application/json" -d @- \
+      "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${INDEX}/assignees"
+
+# Can this user be assigned in the repo? 204 = yes, 404 = no
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/assignees/alice"
+```
+
+Works for PRs too (a PR's index is an issue index). On ≤ 1.26, fetch the current `assignees`, modify the list, and `PATCH` it back.
 
 ## Cross-repository issue search
 

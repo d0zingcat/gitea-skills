@@ -1,6 +1,6 @@
 ---
 name: gitea-package
-version: 0.0.2
+version: 0.0.3
 description: "Gitea Packages registry: list packages (one entry per version), list versions, get version details, get latest, list files, delete versions, and link/unlink packages to repositories (for permission inheritance). Covers /packages/{owner} endpoints; supports alpine/cargo/chef/composer/conan/conda/container/cran/debian/generic/go/helm/maven/npm/nuget/pub/pypi/rpm/rubygems/swift/vagrant and other types. Use when you need to browse packages published by an owner on Gitea Packages, clean up old image versions, inspect package metadata, or associate a package with a repository."
 ---
 
@@ -8,12 +8,12 @@ description: "Gitea Packages registry: list packages (one entry per version), li
 
 **Read first:** [`../gitea-shared/SKILL.md`](../gitea-shared/SKILL.md) — auth, curl template, error handling.
 
-The curls below omit `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`. This document follows the **Gitea 1.26.4** OpenAPI.
+The curls below omit `-H "Authorization: token ${GITEA_ACCESS_TOKEN}" -H "Accept: application/json"`. This document follows the **Gitea 28.2** OpenAPI.
 
 ## Key concepts
 
 - Packages belong to an **owner** (user or org).
-- Packages have a **type** (from the swagger enum): `alpine` / `cargo` / `chef` / `composer` / `conan` / `conda` / `container` / `cran` / `debian` / `generic` / `go` / `helm` / `maven` / `npm` / `nuget` / `pub` / `pypi` / `rpm` / `rubygems` / `swift` / `vagrant`.
+- Packages have a **type** (from the swagger enum): `alpine` / `cargo` / `chef` / `composer` / `conan` / `conda` / `container` / `cran` / `debian` / `generic` / `go` / `helm` / `maven` / `npm` / `nuget` / `pub` / `pypi` / `rpm` / `rubygems` / `swift` / `terraform` / `vagrant`.
 - Package names may contain slashes (e.g. container `repo/image`); URL-encode them in URLs (`/` → `%2F`). Examples below use `${NAME_ENC}` for the encoded name.
 - `Package` object fields: `id`, `name`, `version`, `type`, `owner`, `repository` (linked repo; may be null), `creator`, `created_at`, `html_url`. **There is no `size` field** — file sizes are on the `/files` endpoint.
 
@@ -31,6 +31,15 @@ Optional query parameters:
 | `type` | filter by package type |
 | `q` | filter by **name (substring)** |
 | `page` / `limit` | pagination |
+
+### Instance-wide package list (site admin, 28.0+)
+
+```bash
+curl -fsSL "${GITEA_HOST}/api/v1/admin/packages?type=container&q=my-app&limit=50" \
+  | jq '[.[] | {owner: .owner.login, name, version, type, created_at}]'
+```
+
+Same `type` / `q` / `page` / `limit` parameters, across all owners. Non-admin tokens get 403.
 
 ## List all versions of a package
 
@@ -130,4 +139,5 @@ curl -fsSL -X POST \
 | read public packages | none |
 | read private packages | `read:package` |
 | delete package version | `write:package` or owner identity |
+| `/admin/packages` | site admin |
 | link/unlink package to repository | `write:package` + `write:repository` |

@@ -3,11 +3,11 @@
 [![lint](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml)
 [![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Gitea 1.21–1.26](https://img.shields.io/badge/Gitea-1.21%E2%80%931.26-success)](#tested-against)
+[![Gitea 1.21–28.2](https://img.shields.io/badge/Gitea-1.21%E2%80%9328.2-success)](#tested-against)
 
 > [中文](README.zh.md) · English (you are here)
 
-A set of 13 [agent skills](https://docs.claude.com/en/docs/claude-code/skills) that wrap the Gitea REST API, designed to replace the [gitea-mcp](https://gitea.com/gitea/gitea-mcp) server with progressive-disclosure markdown documents that consume far less LLM context.
+A set of 14 [agent skills](https://docs.claude.com/en/docs/claude-code/skills) that wrap the Gitea REST API, designed to replace the [gitea-mcp](https://gitea.com/gitea/gitea-mcp) server with progressive-disclosure markdown documents that consume far less LLM context.
 
 Each skill loads only when the agent decides it's relevant. The agent then talks to Gitea via plain `curl` + `jq`, with no extra binary or daemon to install.
 
@@ -21,34 +21,39 @@ CI runs the [compatibility matrix](.github/workflows/compatibility.yml) weekly: 
 
 | Gitea | Status | Notes |
 |---|---|---|
-| 1.26 | ✅ | 30/30 — baseline version the docs were calibrated on |
+| 28.2 | ✅ | baseline version the docs are calibrated on; adds Projects probe |
+| 1.27 | ✅ | |
+| 1.26 | ✅ | 30/30 |
 | 1.25 | ✅ | 30/30 |
 | 1.24 | ✅ | 30/30 — Actions endpoints partially missing; see `gitea-actions/KNOWN_ISSUES.md` |
 | 1.23 | ✅ | 28/30 — `search?sort=created` not available, intentionally skipped |
 | 1.22 | ✅ | 27/30 — same as 1.23 plus one extra search-sort skip |
 | 1.21 | ✅ | 27/30 |
 
+Gitea dropped the `1.` prefix at 28.0 (`1.27` → `28.0`). Endpoints marked "28.0+" or "1.27+" in the skills return 404 on older instances, and each skill names the fallback.
+
 The skills are **designed for self-hosted Gitea instances**: internal hostnames, self-signed certificates, reverse-proxy path prefixes, HTTP-only deployments, disabled modules — all covered in `gitea-shared`.
 
-## The 13 skills
+## The 14 skills
 
 | Skill | What it covers | When it triggers |
 |-------|---------------|------------------|
 | [gitea-shared](gitea-shared/SKILL.md) | Auth, host config, TLS, pagination, error handling, version compat, security rules | First time using Gitea, SSL errors, 401/403/404, configuring `GITEA_HOST`/`GITEA_ACCESS_TOKEN` |
 | [gitea-repo](gitea-repo/SKILL.md) | Repos, branches, commits, file read/write, tags, releases, tree | Create/list/fork repos, manage branches, read or edit files, tag, release, browse tree |
-| [gitea-issue](gitea-issue/SKILL.md) | Issues, comments, labels assoc., reactions | File issues, comment, change state, label issues |
-| [gitea-pull](gitea-pull/SKILL.md) | PRs, reviews, merge, reviewers, diff/files/commits | Open/merge PRs, run code review flow, dismiss reviews |
-| [gitea-actions](gitea-actions/SKILL.md) | Workflows, runs (tasks), job logs, artifacts, runners, secrets/variables (repo/org/user), enable/disable | CI status, dispatch workflows, fetch build logs, manage runners |
+| [gitea-issue](gitea-issue/SKILL.md) | Issues, comments, labels assoc., assignees, reactions | File issues, comment, change state, label issues |
+| [gitea-pull](gitea-pull/SKILL.md) | PRs, reviews, review-comment replies, merge, reviewers, diff/files/commits | Open/merge PRs, run code review flow, dismiss reviews |
+| [gitea-actions](gitea-actions/SKILL.md) | Workflows, runs (tasks), job/run logs, cancel/approve runs, artifacts, runners, secrets/variables (repo/org/user), enable/disable | CI status, dispatch workflows, fetch build logs, cancel stuck runs, manage runners |
 | [gitea-wiki](gitea-wiki/SKILL.md) | Wiki pages, revisions | Manage repo wiki content |
 | [gitea-label](gitea-label/SKILL.md) | Repo + org labels | Manage labels, batch create, archive |
 | [gitea-milestone](gitea-milestone/SKILL.md) | Repo milestones | Create/close milestones, set due dates |
 | [gitea-notification](gitea-notification/SKILL.md) | User notifications | Inbox, mark read, scope by repo/subject |
 | [gitea-search](gitea-search/SKILL.md) | Cross-repo issues/PRs, repos, users, org teams | Find things across the instance |
-| [gitea-user](gitea-user/SKILL.md) | Current user, user orgs, instance version | Verify identity, list joined orgs, check Gitea version |
+| [gitea-user](gitea-user/SKILL.md) | Current user, user orgs, token scopes, instance version | Verify identity, list joined orgs, check Gitea version |
 | [gitea-package](gitea-package/SKILL.md) | Packages registry (container/npm/maven/...) | Browse packages, clean old versions, link to repos |
 | [gitea-timetracking](gitea-timetracking/SKILL.md) | Issue stopwatches, time entries | Track issue time, report by repo/user |
+| [gitea-project](gitea-project/SKILL.md) | Project boards, columns, cards (repo/org/user, 28.0+) | Manage kanban boards, triage issues onto a board, move cards |
 
-Total: 2,756 lines, all individual SKILL.md under 500 lines per skill-creator guidelines.
+Total: 3,346 lines across all SKILL.md files.
 
 ## Installation
 
@@ -58,7 +63,7 @@ Total: 2,756 lines, all individual SKILL.md under 500 lines per skill-creator gu
 npx skills add d0zingcat/gitea-skills -g --all
 ```
 
-One command symlinks all 13 skills into your agent skill directory. It does **not** install the repo's `setup.sh` locally.
+One command symlinks all 14 skills into your agent skill directory. It does **not** install the repo's `setup.sh` locally.
 
 After installation, restart the agent so it picks up the new skills.
 
@@ -144,11 +149,12 @@ Once installed, the agent picks the right skill based on what you ask. Destructi
 4. **Self-hosted by default.** TLS, reverse proxy, disabled modules are first-class concerns.
 5. **Security guardrails.** Tokens never echoed; destructive ops always confirmed; Web UI fallback when API is missing.
 
-## Limitations / known gaps in Gitea 1.26.4
+## Limitations / known gaps
 
 These come from the Gitea API itself, not the skills:
 
-- No `POST /actions/runs/{run}/cancel` — cancel a run via the Web UI only
+- Gitea ≤ 1.27 has no `POST /actions/runs/{run}/cancel` / `approve`, so cancel or approve a run in the Web UI. 28.0+ has both.
+- Gitea ≤ 1.27 has no Projects API, so `gitea-project` only works on 28.0+.
 
 Capabilities that were missing on 1.24.x but available since 1.25+ (run details, list jobs, rerun, job logs) are documented in `gitea-actions/SKILL.md` and `gitea-actions/KNOWN_ISSUES.md`.
 
@@ -160,7 +166,7 @@ Issues and PRs welcome. The skill-creator workflow we used:
 3. Run live smoke tests against a real Gitea instance
 4. Iterate until both pass
 
-If you find an endpoint that behaves differently on a Gitea version other than 1.26.4, please open an issue with:
+If you find an endpoint that behaves differently on a Gitea version other than 28.2, please open an issue with:
 - Gitea version (`/api/v1/version`)
 - Endpoint path
 - Observed vs expected behavior
