@@ -188,12 +188,12 @@ jq -n --argjson a '["alice"]' '{assignees: $a}' \
   | curl -fsSL -X DELETE -H "Content-Type: application/json" -d @- \
       "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/issues/${INDEX}/assignees"
 
-# Can this user be assigned in the repo? 204 = yes, 404 = no
+# Can this user be assigned in the repo? 204 = yes, 404 = no (or no such user)
 curl -sS -o /dev/null -w '%{http_code}\n' \
   "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/assignees/alice"
 ```
 
-Works for PRs too (a PR's index is an issue index). On ≤ 1.26, fetch the current `assignees`, modify the list, and `PATCH` it back.
+"Assignable" means write access to the repo, or read access to its pull requests. On a public repo that is almost any user, so a 204 does not mean the user is a collaborator. Works for PRs too (a PR's index is an issue index). On ≤ 1.26, fetch the current `assignees`, modify the list, and `PATCH` it back.
 
 ## Cross-repository issue search
 

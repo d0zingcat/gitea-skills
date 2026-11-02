@@ -47,7 +47,7 @@ curl -fsSL "${GITEA_HOST}/api/v1/version" \
   | jq '.version'
 ```
 
-Since 28.0 the version has no `1.` prefix: `28.2.0` follows `1.27.x`. Compare versions numerically (`sort -V`), never as strings or by assuming a `1.` major.
+Since 28.0 the version has no `1.` prefix: `28.2.0` follows `1.27.x`. Compare major/minor as integers (see gitea-shared "Version compatibility"), never as strings or by assuming a `1.` major.
 
 No token required — the cheapest connectivity test endpoint.
 

@@ -514,13 +514,16 @@ curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
 
 Gitea versions differ slightly on endpoints. Prefer `/api/v1/version` to confirm version, then choose paths. This document is calibrated to **Gitea 28.2**.
 
-**Version numbering**: Gitea dropped the `1.` prefix at 28.0. The order is `… 1.25 → 1.26 → 1.27 → 28.0 → 28.1 → 28.2`. `/api/v1/version` returns e.g. `"28.2.0"`. When gating on version, compare with `sort -V` (or split and compare numerically) and never assume the major is `1`; "28 < 1.x" is wrong. Upgrading 1.26 → 28.x removed no REST endpoints, only added new ones.
+**Version numbering**: Gitea dropped the `1.` prefix at 28.0. The order is `… 1.25 → 1.26 → 1.27 → 28.0 → 28.1 → 28.2`. `/api/v1/version` returns e.g. `"28.2.0"`. When gating on version, split major/minor and compare as integers. Never compare version strings or assume the major is `1`: "28 < 1.x" is wrong. Upgrading 1.26 → 28.x removed no REST endpoints, only added new ones.
 
 ```bash
-v=$(curl -fsSL "${GITEA_HOST}/api/v1/version" | jq -r .version)
-# true when instance >= 28.0.0
-[ "$(printf '%s\n' 28.0.0 "$v" | sort -V | head -1)" = 28.0.0 ] && echo ">= 28"
+v=$(curl -fsSL "${GITEA_HOST}/api/v1/version" | jq -r .version)   # e.g. 28.2.0 or 1.27.3+dev
+major=${v%%.*}; rest=${v#*.}; minor=${rest%%[!0-9]*}
+[ "$major" -ge 28 ] && echo ">= 28.0"
+{ [ "$major" -ge 28 ] || { [ "$major" -eq 1 ] && [ "$minor" -ge 27 ]; }; } && echo ">= 1.27"
 ```
+
+Plain shell arithmetic works on any POSIX shell. `sort -V` is not available in BSD `sort` before macOS 13, so don't rely on it.
 
 | Symptom | Possible cause | Action |
 |------|----------|------|

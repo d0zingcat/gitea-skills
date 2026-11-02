@@ -21,14 +21,16 @@ CI runs the [compatibility matrix](.github/workflows/compatibility.yml) weekly: 
 
 | Gitea | Status | Notes |
 |---|---|---|
-| 28.2 | ✅ | baseline version the docs are calibrated on; adds Projects probe |
-| 1.27 | ✅ | |
+| 28.2 | ✅ | 32/32 — baseline version the docs are calibrated on; includes Projects probe |
+| 1.27 | ✅ | 31/31 + 1 skip (Projects is 28.0+) |
 | 1.26 | ✅ | 30/30 |
 | 1.25 | ✅ | 30/30 |
 | 1.24 | ✅ | 30/30 — Actions endpoints partially missing; see `gitea-actions/KNOWN_ISSUES.md` |
 | 1.23 | ✅ | 28/30 — `search?sort=created` not available, intentionally skipped |
 | 1.22 | ✅ | 27/30 — same as 1.23 plus one extra search-sort skip |
 | 1.21 | ✅ | 27/30 |
+
+The 1.27 and 28.2 rows were verified with `scripts/smoke_test.sh` against local `docker.gitea.com/gitea:1.27.3` / `28.2.0` containers; the CI matrix job has not run on them yet.
 
 Gitea dropped the `1.` prefix at 28.0 (`1.27` → `28.0`). Endpoints marked "28.0+" or "1.27+" in the skills return 404 on older instances, and each skill names the fallback.
 

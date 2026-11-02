@@ -21,14 +21,16 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 
 | Gitea | 状态 | 备注 |
 |---|---|---|
-| 28.2 | ✅ | 文档校准的基准版本；新增 Projects 探针 |
-| 1.27 | ✅ | |
+| 28.2 | ✅ | 全部 32 项通过（文档校准的基准版本，含 Projects 探针） |
+| 1.27 | ✅ | 31 项通过，1 项跳过（Projects 是 28.0+） |
 | 1.26 | ✅ | 全部 30 项通过 |
 | 1.25 | ✅ | 全部 30 项通过 |
 | 1.24 | ✅ | 全部 30 项通过；Actions 部分 endpoint 缺失，见 `gitea-actions/KNOWN_ISSUES.md` |
 | 1.23 | ✅ | 28 项通过；search `sort=created` 在该版本不可用，已跳过 |
 | 1.22 | ✅ | 27 项通过；同 1.23 + 一项 search sort 兼容跳过 |
 | 1.21 | ✅ | 27 项通过 |
+
+1.27 和 28.2 两行是在本地 `docker.gitea.com/gitea:1.27.3` / `28.2.0` 容器上跑 `scripts/smoke_test.sh` 得到的，CI 矩阵尚未在这两个版本上跑过。
 
 Gitea 从 28.0 起去掉了版本号的 `1.` 前缀（`1.27` 之后是 `28.0`）。skill 里标注 "28.0+" 或 "1.27+" 的 endpoint 在旧实例上返回 404，各 skill 都写了退路。
 

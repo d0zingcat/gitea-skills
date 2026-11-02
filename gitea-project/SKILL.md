@@ -71,7 +71,7 @@ jq -n --arg title "Sprint 42" --arg desc "Backend sprint board" '{
 |-------|----------|--------|
 | `title` | yes | |
 | `description` | no | markdown |
-| `template_type` | no | `none` (no columns) / `basic_kanban` (To Do, In Progress, Done) / `bug_triage` |
+| `template_type` | no | `none` (no columns) / `basic_kanban` (Backlog, To Do, In Progress, Done; Backlog is the default) / `bug_triage` |
 | `card_type` | no | `text_only` / `images_and_text` |
 
 Returns **201**.
@@ -129,7 +129,7 @@ jq -n --argjson ids '[12, 15, 13, 14]' '{column_ids: $ids}' \
       "${BASE}/${PROJECT_ID}/columns/move"
 ```
 
-`column_ids` is the full list in the new left-to-right order. Returns **204**.
+`column_ids` must list **every** column of the project exactly once, in the new left-to-right order; a partial list returns 422. Fetch the column list first. Returns **204**.
 
 ### Set default column
 
@@ -216,7 +216,7 @@ If the issue is already on the board, use the `move` endpoint instead.
 |--------|---------|
 | 404 | Gitea < 28.0, Projects unit disabled for the repo, wrong id, or no read access |
 | 403 | No write permission on the project's owner |
-| 422 | Validation error (e.g. deleting the default column, too many columns) |
+| 422 | Validation error (e.g. deleting the default column, partial `column_ids` in reorder, too many columns) |
 | 423 | Repository is archived |
 
 ## Permission notes
