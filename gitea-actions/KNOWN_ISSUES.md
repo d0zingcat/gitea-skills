@@ -1,8 +1,8 @@
 # Gitea Actions Skill — Known Issues
 
-## Still missing on 1.26.4: cancel run API
+## Cancel run API: missing on ≤ 1.27, available since 28.0
 
-Gitea 1.26.4 swagger does not include `POST /actions/runs/{run}/cancel` (or an equivalent endpoint). To cancel a running workflow, direct the user to the Web UI:
+Gitea 28.0 added `POST /actions/runs/{run}/cancel`, `/force-cancel` and `/approve` (see `SKILL.md`). Gitea 1.26.x and 1.27.x have no cancel endpoint. On those versions, direct the user to the Web UI:
 
 ```
 ${GITEA_HOST}/${OWNER}/${REPO}/actions/runs/${RUN_NUMBER}

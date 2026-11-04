@@ -9,11 +9,15 @@ on:
 jobs:
   smoke:
     name: Smoke test ${{ matrix.gitea }}
+    # Needs GitHub-hosted runners: the Gitea container is reached via the host's
+    # localhost:3000. Gitea act runners run jobs in their own container, so skip
+    # there (mirrors such as gitea.quantpi.cn).
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        gitea: ["1.21", "1.22", "1.23", "1.24", "1.25", "1.26"]
+        gitea: ["1.21", "1.22", "1.23", "1.24", "1.25", "1.26", "1.27", "28.2"]
 
     steps:
       - uses: actions/checkout@v4

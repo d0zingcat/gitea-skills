@@ -1,7 +1,7 @@
 ---
 name: gitea-pull
-version: 0.0.2
-description: "Gitea Pull Request management: create/edit/merge/close PRs, read diff and file lists, review workflow (create review, submit pending review, approve/reject/dismiss, add inline comments), add/remove reviewers, update PR branch from base. Covers /repos/{owner}/{repo}/pulls REST endpoints. Use when the user needs to open PRs, merge PRs, run code review workflows, revert reviews, or inspect PR changed files or diffs on Gitea."
+version: 0.0.3
+description: "Gitea Pull Request management: create/edit/merge/close PRs, read diff and file lists, review workflow (create review, submit pending review, approve/reject/dismiss, add inline comments, reply to review comments), add/remove reviewers, update PR branch from base. Covers /repos/{owner}/{repo}/pulls REST endpoints. Use when the user needs to open PRs, merge PRs, run code review workflows, revert reviews, or inspect PR changed files or diffs on Gitea."
 ---
 
 # Gitea Pull Request
@@ -303,6 +303,19 @@ Field reference:
   - `body`: comment text
 
 Either `old_position` or `new_position` is sufficient; line numbers come from patch hunks in the `pulls/{n}/files` response.
+
+### Reply to a Review Comment (1.27+)
+
+`COMMENT_ID` is the inline comment's `id` from "Inline Comments on a Review". The reply joins the same thread.
+
+```bash
+jq -n --rawfile body /tmp/reply.md '{body: $body}' \
+  | curl -fsSL -X POST -H "Content-Type: application/json" -d @- \
+      "${GITEA_HOST}/api/v1/repos/${OWNER}/${REPO}/pulls/${INDEX}/comments/${COMMENT_ID}/replies" \
+  | jq '{id, body, path, html_url}'
+```
+
+Returns **201**. On ≤ 1.26 the endpoint returns 404; fall back to a new review with an inline comment on the same `path` and line.
 
 ### Submit Pending Review
 

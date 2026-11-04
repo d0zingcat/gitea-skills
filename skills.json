@@ -2,23 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "gitea-skills",
   "version": "0.2.0",
-  "description": "13 agent skills wrapping the Gitea REST API for self-hosted Gitea instances (multi-profile)",
+  "description": "14 agent skills wrapping the Gitea REST API for self-hosted Gitea instances (multi-profile)",
   "homepage": "https://github.com/d0zingcat/gitea-skills",
   "license": "MIT",
-  "tested_against": [
-    "1.26.4"
-  ],
+  "tested_against": ["1.26.4", "1.27.3", "28.2.0"],
   "skills": [
     {
       "name": "gitea-shared",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "path": "gitea-shared/SKILL.md",
       "description": "Shared base for all gitea-* skills: multi-profile auth with git-remote auto-match, host config, TLS, pagination, error handling, security",
       "tags": ["base", "auth", "config", "profiles"]
     },
     {
       "name": "gitea-repo",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "path": "gitea-repo/SKILL.md",
       "description": "Repos, branches, commits, files, tags, releases, tree",
       "tags": ["repository", "git"],
@@ -26,15 +24,15 @@
     },
     {
       "name": "gitea-issue",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "path": "gitea-issue/SKILL.md",
-      "description": "Issues, comments, labels association, reactions",
+      "description": "Issues, comments, labels association, assignees, reactions",
       "tags": ["issue", "collab"],
       "depends_on": ["gitea-shared"]
     },
     {
       "name": "gitea-pull",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "path": "gitea-pull/SKILL.md",
       "description": "Pull requests, reviews, merge, reviewers",
       "tags": ["pull-request", "review", "collab"],
@@ -42,9 +40,9 @@
     },
     {
       "name": "gitea-actions",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "path": "gitea-actions/SKILL.md",
-      "description": "Workflows, runs, jobs, job logs, artifacts, runners, secrets, variables",
+      "description": "Workflows, runs, jobs, job/run logs, cancel/approve, artifacts, runners, secrets, variables",
       "tags": ["ci", "actions"],
       "depends_on": ["gitea-shared"]
     },
@@ -90,15 +88,15 @@
     },
     {
       "name": "gitea-user",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "path": "gitea-user/SKILL.md",
-      "description": "Current user, user orgs, instance version",
+      "description": "Current user, user orgs, token scopes, instance version",
       "tags": ["user", "org"],
       "depends_on": ["gitea-shared"]
     },
     {
       "name": "gitea-package",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "path": "gitea-package/SKILL.md",
       "description": "Packages registry: list, versions, files, link, delete",
       "tags": ["package", "registry"],
@@ -110,6 +108,14 @@
       "path": "gitea-timetracking/SKILL.md",
       "description": "Issue stopwatches and time entries",
       "tags": ["time-tracking"],
+      "depends_on": ["gitea-shared"]
+    },
+    {
+      "name": "gitea-project",
+      "version": "0.1.0",
+      "path": "gitea-project/SKILL.md",
+      "description": "Project boards (28.0+): projects, columns, cards at repo/org/user level",
+      "tags": ["project", "kanban", "collab"],
       "depends_on": ["gitea-shared"]
     }
   ]

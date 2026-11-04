@@ -3,11 +3,11 @@
 [![lint](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/lint.yml)
 [![compatibility-matrix](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml/badge.svg)](https://github.com/d0zingcat/gitea-skills/actions/workflows/compatibility.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Gitea 1.21–1.26](https://img.shields.io/badge/Gitea-1.21%E2%80%931.26-success)](#%E5%85%BC%E5%AE%B9%E6%80%A7)
+[![Gitea 1.21–28.2](https://img.shields.io/badge/Gitea-1.21%E2%80%9328.2-success)](#%E5%85%BC%E5%AE%B9%E6%80%A7)
 
 > 中文 (you are here) · [English](README.md)
 
-把 [gitea-mcp](https://gitea.com/gitea/gitea-mcp) 的 80 多个 tool 用 13 个 [agent skill](https://docs.claude.com/en/docs/claude-code/skills) 重新组织。每个 skill 是一份按需加载的 markdown 文档，整体让 LLM 上下文占用大幅下降。
+把 [gitea-mcp](https://gitea.com/gitea/gitea-mcp) 的 80 多个 tool 用 14 个 [agent skill](https://docs.claude.com/en/docs/claude-code/skills) 重新组织。每个 skill 是一份按需加载的 markdown 文档，整体让 LLM 上下文占用大幅下降。
 
 只在 agent 判断"和 Gitea 相关"时才会把对应 SKILL.md 注入上下文；agent 接着用纯 `curl` + `jq` 跟 Gitea 通信，**不需要额外安装任何二进制或 daemon**。
 
@@ -21,34 +21,39 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 
 | Gitea | 状态 | 备注 |
 |---|---|---|
-| 1.26 | ✅ | 全部 30 项通过（文档校准的基准版本） |
+| 28.2 | ✅ | 全部 32 项通过（文档校准的基准版本，含 Projects 探针） |
+| 1.27 | ✅ | 31 项通过，1 项跳过（Projects 是 28.0+） |
+| 1.26 | ✅ | 全部 30 项通过 |
 | 1.25 | ✅ | 全部 30 项通过 |
 | 1.24 | ✅ | 全部 30 项通过；Actions 部分 endpoint 缺失，见 `gitea-actions/KNOWN_ISSUES.md` |
 | 1.23 | ✅ | 28 项通过；search `sort=created` 在该版本不可用，已跳过 |
 | 1.22 | ✅ | 27 项通过；同 1.23 + 一项 search sort 兼容跳过 |
 | 1.21 | ✅ | 27 项通过 |
 
+Gitea 从 28.0 起去掉了版本号的 `1.` 前缀（`1.27` 之后是 `28.0`）。skill 里标注 "28.0+" 或 "1.27+" 的 endpoint 在旧实例上返回 404，各 skill 都写了退路。
+
 整套 skill **面向自部署 Gitea 实例**：内网域名、自签名证书、反向代理 path 前缀、HTTP 明文部署、被禁用的模块——`gitea-shared` 都覆盖了。
 
-## 13 个 skill
+## 14 个 skill
 
 | Skill | 范围 | 触发场景 |
 |-------|------|---------|
 | [gitea-shared](gitea-shared/SKILL.md) | 认证、host、TLS、分页、错误处理、版本兼容、安全规则 | 第一次用 Gitea、SSL 错误、401/403/404、配 `GITEA_HOST`/`GITEA_ACCESS_TOKEN` |
 | [gitea-repo](gitea-repo/SKILL.md) | 仓库、分支、commit、文件读写、tag、release、tree | 创建/列出/fork 仓库、管理分支、读写文件、打 tag、发 release |
-| [gitea-issue](gitea-issue/SKILL.md) | issue、评论、标签关联、表情回应 | 提 issue、评论、改状态、打标签 |
-| [gitea-pull](gitea-pull/SKILL.md) | PR、review、合并、reviewers、diff/files/commits | 提交 PR、走代码评审、合并 PR、撤销 review |
-| [gitea-actions](gitea-actions/SKILL.md) | workflows、runs（tasks）、job 日志、artifacts、runners、secrets/variables（仓库/组织/用户级）、enable/disable | 看 CI、手动 dispatch、查 build 日志、管理 runner |
+| [gitea-issue](gitea-issue/SKILL.md) | issue、评论、标签关联、assignees、表情回应 | 提 issue、评论、改状态、打标签 |
+| [gitea-pull](gitea-pull/SKILL.md) | PR、review、回复 review 评论、合并、reviewers、diff/files/commits | 提交 PR、走代码评审、合并 PR、撤销 review |
+| [gitea-actions](gitea-actions/SKILL.md) | workflows、runs（tasks）、job/run 日志、取消/批准 run、artifacts、runners、secrets/variables（仓库/组织/用户级）、enable/disable | 看 CI、手动 dispatch、查 build 日志、取消卡住的 run、管理 runner |
 | [gitea-wiki](gitea-wiki/SKILL.md) | Wiki 页面、修订历史 | 在 Gitea Wiki 上写文档 |
 | [gitea-label](gitea-label/SKILL.md) | 仓库 + 组织 label | 管理标签、批量创建、归档 |
 | [gitea-milestone](gitea-milestone/SKILL.md) | 仓库里程碑 | 创建/关闭里程碑、设置截止时间 |
 | [gitea-notification](gitea-notification/SKILL.md) | 用户通知收件箱 | 看 Gitea 收件箱、批量已读 |
 | [gitea-search](gitea-search/SKILL.md) | 跨仓库搜 issue/PR、找仓库、用户、团队 | 全实例查找 |
-| [gitea-user](gitea-user/SKILL.md) | 当前用户、所属组织、实例版本 | 验证身份、查所属 org、看 Gitea 版本 |
+| [gitea-user](gitea-user/SKILL.md) | 当前用户、所属组织、token scope、实例版本 | 验证身份、查所属 org、看 Gitea 版本 |
 | [gitea-package](gitea-package/SKILL.md) | 包注册中心（container/npm/maven/...） | 浏览包、清理旧版本、绑到仓库 |
 | [gitea-timetracking](gitea-timetracking/SKILL.md) | issue 秒表、工时记录 | 给 issue 计时、按仓库/人统计 |
+| [gitea-project](gitea-project/SKILL.md) | 项目看板、列、卡片（仓库/组织/用户级，28.0+） | 管理看板、把 issue 排进看板、移动卡片 |
 
-总文档量 2756 行，单文件均 < 500 行（符合 skill-creator 规范）。
+所有 SKILL.md 合计 3,346 行。
 
 ## 安装
 
@@ -58,7 +63,7 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 npx skills add d0zingcat/gitea-skills -g --all
 ```
 
-一行搞定，自动把全部 13 个 skill symlink 到 agent skill 目录。**不会**把仓库里的 `setup.sh` 装到本地。
+一行搞定，自动把全部 14 个 skill symlink 到 agent skill 目录。**不会**把仓库里的 `setup.sh` 装到本地。
 
 安装完后重启 agent 让它扫到新 skill。
 
@@ -144,11 +149,12 @@ bash setup.sh --uninstall  # 删除整个配置目录
 4. **自部署优先。** TLS、反代、模块开关都是一等公民。
 5. **安全护栏。** token 不回显、破坏性操作必确认、API 缺失时给出 Web UI 退路。
 
-## Gitea 1.26.4 的已知 API 缺口
+## 已知 API 缺口
 
 下列限制来自 Gitea 上游 API 本身，不是 skill 的锅：
 
-- 没有 `POST /actions/runs/{run}/cancel`（取消 run 只能走 Web UI）
+- Gitea ≤ 1.27 没有 `POST /actions/runs/{run}/cancel` / `approve`，取消或批准 run 只能走 Web UI；28.0+ 已支持
+- Gitea ≤ 1.27 没有 Projects API，`gitea-project` 仅适用于 28.0+
 
 1.25+ 已修复、1.24.x 曾缺失的能力（runs 详情、list jobs、rerun、job logs）见 `gitea-actions/SKILL.md` 和 `gitea-actions/KNOWN_ISSUES.md`。
 
@@ -161,7 +167,7 @@ bash setup.sh --uninstall  # 删除整个配置目录
 3. 在真实 Gitea 实例上跑只读冒烟
 4. 两边都过才合入
 
-如果你在某个非 1.26.4 的 Gitea 版本上发现行为不一样，请提 issue 附：
+如果你在某个非 28.2 的 Gitea 版本上发现行为不一样，请提 issue 附：
 
 - Gitea 版本（`/api/v1/version` 输出）
 - 出问题的 endpoint 路径

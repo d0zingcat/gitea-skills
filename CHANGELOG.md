@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`gitea-project`** (new skill): Projects board API added in Gitea 28.0. Covers repo / org / user projects, columns (create, edit, reorder, default, delete) and cards (add, move, remove). It documents that `issue_id` is the global issue ID, not the `#number`.
+- **`gitea-actions`**: cancel / force-cancel / approve run (28.0+), whole-run log zip (28.0+), per-workflow run list and run attempts (1.27+), jobs `sort`/`order` and runs `exclude_pull_requests` params.
+- **`gitea-pull`**: reply to a review comment (1.27+).
+- **`gitea-issue`**: add / remove assignees and check assignability (1.27+).
+- **`gitea-user`**: `GET /token` to inspect the current token's scopes (1.27+).
+- **`gitea-repo`**: branches `q` filter (1.27+), release `tag_filter` (28.0+), compare `output=diff|patch` (1.27+) and `files` / `verification` (28.0+).
+- **`gitea-package`**: site-admin `GET /admin/packages` (28.0+); `terraform` added to the type list.
+
+### Changed
+
+- Docs recalibrated from Gitea 1.26.4 to **28.2**. Gitea dropped the `1.` prefix at 28.0, so `gitea-shared` now explains the numbering, shows a portable major/minor version gate (no `sort -V`), and lists the 404 fallbacks for 1.27+/28.0+ endpoints. A 1.26.4 → 28.2 swagger diff shows no removed endpoints or parameters.
+- `gitea-actions/KNOWN_ISSUES.md`, README (en/zh): the "no cancel API" gap now applies only to ≤ 1.27.
+- CI compatibility matrix adds `1.27` and `28.2`; smoke test probes the Projects endpoint (SKIP on 404).
+- CI compatibility matrix only runs on github.com. On Gitea act runners (mirrors) the job container cannot reach the Gitea container on `localhost:3000`, so it failed every week there.
+
 ### Fixed
 
 - **`gitea-shared` / `gitea-pull` / `gitea-issue`**: PR/issue/comment bodies containing markdown backticks were silently eaten by shell interpolation when an agent embedded a body file or variable into `curl -d '{...}'`. Rewrote the write-operation template to recommend the `jq -n --arg/--rawfile ... | curl -d @-` pipe (jq builds+escapes JSON, curl reads the body from stdin so it never passes through shell parsing), added a "Safe body construction" section with file/variable examples and three explicit anti-patterns, and converted every create/edit/merge/review/comment/label/reaction example in `gitea-pull` and `gitea-issue` to the pipe form. `examples/02-create-issue-and-label.md` and `examples/03-merge-pr-with-confirmation.md` updated for consistency (the latter also drops the fragile `'"${HEAD_SHA}"'` string concatenation in favor of `--arg head_commit_id`).

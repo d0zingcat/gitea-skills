@@ -9,7 +9,7 @@
 ## Why this needs care
 
 - `dispatch_workflow` is a **real CI execution** (real cost, real side effects).
-- On Gitea **1.25+** (including 1.26.4), poll run status via `GET /actions/runs/{run_id}` and check `status=completed` + `conclusion`.
+- On Gitea **1.25+** (including 28.x), poll run status via `GET /actions/runs/{run_id}` and check `status=completed` + `conclusion`.
 - On Gitea **1.24.x**, fallback to `/actions/tasks` (single `status` field, no list-jobs API).
 - The endpoint name is `dispatches` (plural) on 1.21+. Old singular `dispatch` is gone.
 
@@ -83,6 +83,9 @@ if [ "$CONCLUSION" = "failure" ]; then
       "${GITEA_HOST}/api/v1/repos/team-a/web/actions/jobs/${JOB_ID}/logs"
     echo "Saved job log to failure.log"
   fi
+  # 28.0+: all job logs in one zip instead
+  # curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" -o run-logs.zip \
+  #   "${GITEA_HOST}/api/v1/repos/team-a/web/actions/runs/${RUN_ID}/logs"
 
   echo "Artifacts (if any):"
   curl -fsSL -H "Authorization: token ${GITEA_ACCESS_TOKEN}" \
