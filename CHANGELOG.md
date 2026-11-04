@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docs recalibrated from Gitea 1.26.4 to **28.2**. Gitea dropped the `1.` prefix at 28.0, so `gitea-shared` now explains the numbering, shows a portable major/minor version gate (no `sort -V`), and lists the 404 fallbacks for 1.27+/28.0+ endpoints. A 1.26.4 → 28.2 swagger diff shows no removed endpoints or parameters.
 - `gitea-actions/KNOWN_ISSUES.md`, README (en/zh): the "no cancel API" gap now applies only to ≤ 1.27.
 - CI compatibility matrix adds `1.27` and `28.2`; smoke test probes the Projects endpoint (SKIP on 404).
+- CI compatibility matrix only runs on github.com. On Gitea act runners (mirrors) the job container cannot reach the Gitea container on `localhost:3000`, so it failed every week there.
 
 ### Fixed
 
