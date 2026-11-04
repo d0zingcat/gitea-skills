@@ -30,8 +30,6 @@ CI runs the [compatibility matrix](.github/workflows/compatibility.yml) weekly: 
 | 1.22 | ✅ | 27/30 — same as 1.23 plus one extra search-sort skip |
 | 1.21 | ✅ | 27/30 |
 
-The 1.27 and 28.2 rows were verified with `scripts/smoke_test.sh` against local `docker.gitea.com/gitea:1.27.3` / `28.2.0` containers; the CI matrix job has not run on them yet.
-
 Gitea dropped the `1.` prefix at 28.0 (`1.27` → `28.0`). Endpoints marked "28.0+" or "1.27+" in the skills return 404 on older instances, and each skill names the fallback.
 
 The skills are **designed for self-hosted Gitea instances**: internal hostnames, self-signed certificates, reverse-proxy path prefixes, HTTP-only deployments, disabled modules — all covered in `gitea-shared`.

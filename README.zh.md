@@ -30,8 +30,6 @@ CI 每周一自动跑 [兼容矩阵](.github/workflows/compatibility.yml)，对�
 | 1.22 | ✅ | 27 项通过；同 1.23 + 一项 search sort 兼容跳过 |
 | 1.21 | ✅ | 27 项通过 |
 
-1.27 和 28.2 两行是在本地 `docker.gitea.com/gitea:1.27.3` / `28.2.0` 容器上跑 `scripts/smoke_test.sh` 得到的，CI 矩阵尚未在这两个版本上跑过。
-
 Gitea 从 28.0 起去掉了版本号的 `1.` 前缀（`1.27` 之后是 `28.0`）。skill 里标注 "28.0+" 或 "1.27+" 的 endpoint 在旧实例上返回 404，各 skill 都写了退路。
 
 整套 skill **面向自部署 Gitea 实例**：内网域名、自签名证书、反向代理 path 前缀、HTTP 明文部署、被禁用的模块——`gitea-shared` 都覆盖了。
